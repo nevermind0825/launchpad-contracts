@@ -39,7 +39,7 @@ contract Tier is Ownable {
      * @param tierName: Name of the tier to insert
      * @param minimumPoint: Minimum point of the tier to insert
      * @param multiplier: Multiplier of the tier to insert
-     * @return index: Index of the added tier
+     * @return index: Index of the inserted tier
      */
     function insertTier(
         string memory tierName,
