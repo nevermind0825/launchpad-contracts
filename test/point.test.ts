@@ -28,10 +28,9 @@ describe("Point test", () => {
     PlayBUSD = await playBUSD.deploy(10000); // set initail supply of PlayBUSD token as 10000.
     await PlayBUSD.deployed();
 
-    // Users fund into the Play token and PlayBUSD token.
+    // Transfer tokens
     await Play.transfer(user1.address, 100);
     await Play.transfer(user2.address, 200);
-
     await PlayBUSD.transfer(user1.address, 500);
     await PlayBUSD.transfer(user2.address, 300);
   });

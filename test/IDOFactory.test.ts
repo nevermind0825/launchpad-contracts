@@ -42,7 +42,7 @@ describe("IDOFactory test", () => {
     IDOFactory = await idoFactory.deploy(Tier.address, Point.address);
     await IDOFactory.deployed();
 
-    // Users fund into the Play token and PlayBUSD token.
+    // Transfer tokens
     await Play.transfer(user0.address, 100);
     await Play.transfer(user1.address, 200);
     await PlayBUSD.transfer(user0.address, 500);
