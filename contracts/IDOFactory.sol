@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/interfaces/IERC20.sol";
-import "hardhat/console.sol";
+// import "hardhat/console.sol";
 
 import "./IDO.sol";
 import "./interfaces/ITier.sol";
@@ -67,7 +67,7 @@ contract IDOFactory is Ownable {
         _ctrtIDOs[index].finalize(owner(), finalizer, _feePercent, _feeRecipient);
     }
 
-    function emergencyRefund(uint256 index) external onlyOwner {
+    function emergencyRefund(uint256 index) external onlyOwner inIDOs(index) {
         _ctrtIDOs[index].emergencyRefund();
     }
 
