@@ -247,18 +247,20 @@ contract IDO is Ownable {
     function fund(address funder, uint256 amount) external onlyInTime(_startTime, _endTime) onlyFundAmount(amount) {
         require(_state == State.Waiting, "IDO: funder can't fund");
         uint256 nowHours = block.timestamp % SECONDS_PER_DAY;
+        uint256 maxFundAmount = 0;
 
         if (nowHours < TIER_FUND_TIME) {
             uint256 multiplier = IDOFactory(owner()).getMultiplier(funder);
-            // console.log("tier:", multiplier * _baseAmount, amount);
-            require(multiplier * _baseAmount >= amount, "IDO: fund amount is too much");
+            maxFundAmount = multiplier * _baseAmount;
+            // console.log("tier:", maxFundAmount, amount);
         } else if (nowHours < WHITELISTED_USER_FUND_TIME) {
-            // console.log("whitelisted user:", _whitelistedAmounts[funder], amount);
-            require(_whitelistedAmounts[funder] >= amount, "IDO: fund amount is too much");
+            maxFundAmount = _whitelistedAmounts[funder];
+            // console.log("whitelisted user:", maxFundAmount, amount);
         } else {
-            // console.log("any user:", _maxAmountPerUser, amount);
-            require(_maxAmountPerUser >= amount, "IDO: fund amount is too much");
+            maxFundAmount = _maxAmountPerUser;
+            // console.log("any user:", maxFundAmount, amount);
         }
+        require(maxFundAmount >= amount, "IDO: fund amount is too much");
         _fundedAmount += amount;
         _fundedAmounts[funder] += amount;
 
