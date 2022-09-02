@@ -3,44 +3,17 @@ import { ethers } from "hardhat";
 import { expect } from "chai";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 
+import { initTier } from "./IDO.behavior";
+
 describe("Tier test", () => {
   let Tier: Contract;
   let Point: Contract;
-  let owner: SignerWithAddress;
   let user1: SignerWithAddress;
   let user2: SignerWithAddress;
 
   beforeEach(async () => {
-    [owner, user1, user2] = await ethers.getSigners();
-    // Deploy tier contract.
-    const tier = await ethers.getContractFactory("Tier");
-    Tier = await tier.connect(owner).deploy();
-    await Tier.deployed();
-
-    // Deploy point contract.
-    const point = await ethers.getContractFactory("Point");
-    Point = await point.deploy(1); // set decimal as 1.
-    await Point.deployed();
-
-    // Play contract deploy.
-    const play = await ethers.getContractFactory("Play");
-    const Play = await play.deploy(10000); // set initail supply of Play token as 10000.
-    await Play.deployed();
-
-    // PlayBUSD contract deploy
-    const playBUSD = await ethers.getContractFactory("PlayBUSD");
-    const PlayBUSD = await playBUSD.deploy(10000); // set initail supply of PlayBUSD token as 10000.
-    await PlayBUSD.deployed();
-
-    // transter tokens to users.
-    await Play.transfer(user1.address, 100);
-    await Play.transfer(user2.address, 200);
-    await PlayBUSD.transfer(user1.address, 500);
-    await PlayBUSD.transfer(user2.address, 300);
-
-    // add tokens
-    await Point.insertToken(Play.address, 8);
-    await Point.insertToken(PlayBUSD.address, 15);
+    [, user1, user2] = await ethers.getSigners();
+    [Tier, Point] = await initTier(user1, user2);
   });
 
   describe("Check owner functions", () => {
@@ -95,6 +68,7 @@ describe("Tier test", () => {
   });
 
   it("Get user's multiplier", async () => {
-    expect(await Tier.getMultiplier(Point.address, user1.address)).to.equal(5);
+    // user point = 1550 (= 1000 * 0.8 + 500 * 1.5), Star: 1500, 15
+    expect(await Tier.getMultiplier(Point.address, user1.address)).to.equal(15);
   });
 });

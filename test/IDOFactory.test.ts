@@ -3,11 +3,12 @@ import { Contract } from "ethers";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
 
+import { initIDOFactory } from "./IDO.behavior";
+
 describe("IDOFactory test", () => {
   let IDOFactory: Contract;
   let Play: Contract;
   let PlayBUSD: Contract;
-  let owner: SignerWithAddress;
   let operator: SignerWithAddress;
   let recipient: SignerWithAddress;
   let finalizer: SignerWithAddress;
@@ -15,45 +16,8 @@ describe("IDOFactory test", () => {
   let user1: SignerWithAddress;
 
   beforeEach(async () => {
-    [owner, operator, recipient, finalizer, user0, user1] = await ethers.getSigners();
-
-    // Deploy tier contract.
-    const tier = await ethers.getContractFactory("Tier");
-    const Tier = await tier.deploy();
-    await Tier.deployed();
-
-    // Deploy point contract.
-    const point = await ethers.getContractFactory("Point");
-    const Point = await point.deploy(1); // set decimal as 1.
-    await Point.deployed();
-
-    // Play contract deploy.
-    const play = await ethers.getContractFactory("Play");
-    Play = await play.deploy(10000); // set initail supply of Play token as 10000.
-    await Play.deployed();
-
-    // PlayBUSD contract deploy
-    const playBUSD = await ethers.getContractFactory("PlayBUSD");
-    PlayBUSD = await playBUSD.deploy(10000); // set initail supply of PlayBUSD token as 10000.
-    await PlayBUSD.deployed();
-
-    // deploy IDOFactory contract
-    const idoFactory = await ethers.getContractFactory("IDOFactory");
-    IDOFactory = await idoFactory.deploy(Tier.address, Point.address);
-    await IDOFactory.deployed();
-
-    // Transfer tokens
-    await Play.transfer(user0.address, 100);
-    await Play.transfer(user1.address, 200);
-    await PlayBUSD.transfer(user0.address, 500);
-    await PlayBUSD.transfer(user1.address, 300);
-
-    // Insert tokens
-    await Point.insertToken(Play.address, 8);
-    await Point.insertToken(PlayBUSD.address, 15);
-
-    // Insert operator
-    await IDOFactory.connect(owner).insertOperator(operator.address);
+    [, operator, recipient, finalizer, user0, user1] = await ethers.getSigners();
+    [IDOFactory, , , Play, PlayBUSD] = await initIDOFactory(operator, user0, user1);
   });
 
   describe("Check owner functions", async () => {
@@ -84,16 +48,14 @@ describe("IDOFactory test", () => {
     });
 
     it("Check emergencyRefund function", async () => {
-      await expect(IDOFactory.connect(user1).emergencyRefund(0)).to.be.revertedWith(
-        "Ownable: caller is not the owner",
-      );
+      await expect(IDOFactory.connect(user1).emergencyRefund(0)).to.be.revertedWith("Ownable: caller is not the owner");
     });
   });
 
   describe("Check operator functions", async () => {
     it("Check removeOperator function", async () => {
       await expect(IDOFactory.removeOperator(1)).to.be.revertedWith("IDOFactory: operator index is invalid");
-      await IDOFactory.connect(owner).insertOperator(user1.address);
+      await IDOFactory.insertOperator(user1.address);
       await IDOFactory.removeOperator(0);
     });
 
@@ -168,7 +130,7 @@ describe("IDOFactory test", () => {
   });
 
   it("Get multiplier of funder", async () => {
-     // user point = 830 (= 100 * 0.8 + 500 * 1.5), Star: 500, 5
-    expect(await IDOFactory.getMultiplier(user0.address)).to.equal(5);
+    // user point = 1550 (= 1000 * 0.8 + 500 * 1.5), Star: 1500, 15
+    expect(await IDOFactory.getMultiplier(user0.address)).to.equal(15);
   });
 });

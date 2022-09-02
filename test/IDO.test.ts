@@ -1,20 +1,12 @@
-import { Contract, BigNumber } from "ethers";
+import { Contract } from "ethers";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { ethers } from "hardhat";
 import { expect } from "chai";
 import moment from "moment";
 
 import { timeTravel } from "./helper";
-import {
-  ONE_DAY_IN_SECONDS,
-  ONE_HOUR_IN_SECONDS,
-  TIER_FUND_TIME,
-  WHITELISTED_USER_FUND_TIME,
-  ANY_USER_FUND_TIME,
-  WAITING,
-  SUCCESS,
-  FAILURE,
-} from "./constants";
+import { ONE_DAY_IN_SECONDS, TIER_FUND_TIME, WHITELISTED_USER_FUND_TIME, FAILURE } from "./constants";
+import { initIDOFactory } from "./IDO.behavior";
 
 describe("IDO test", async () => {
   let IDOFactory: Contract;
@@ -31,44 +23,11 @@ describe("IDO test", async () => {
   beforeEach(async () => {
     [owner, operator, recipient, finalizer, user0, user1, user2] = await ethers.getSigners();
 
-    // Deploy tier contract.
-    const tier = await ethers.getContractFactory("Tier");
-    const Tier = await tier.deploy();
-    await Tier.deployed();
-
-    // Deploy point contract.
-    const point = await ethers.getContractFactory("Point");
-    const Point = await point.deploy(1); // set decimal as 1.
-    await Point.deployed();
-
-    // Play contract deploy.
-    const play = await ethers.getContractFactory("Play");
-    const Play = await play.deploy(10000); // set initail supply of Play token as 10000.
-    await Play.deployed();
-
-    // PlayBUSD contract deploy
-    const playBUSD = await ethers.getContractFactory("PlayBUSD");
-    const PlayBUSD = await playBUSD.deploy(10000); // set initail supply of PlayBUSD token as 10000.
-    await PlayBUSD.deployed();
-
-    // deploy IDOFactory contract
-    const idoFactory = await ethers.getContractFactory("IDOFactory");
-    IDOFactory = await idoFactory.deploy(Tier.address, Point.address);
-    await IDOFactory.deployed();
-
-    // Transfer tokens.
-    await Play.transfer(user0.address, 1000);
-    await Play.transfer(user1.address, 1000);
-    await Play.transfer(user2.address, 1000);
-    await PlayBUSD.transfer(user0.address, 300);
-    await PlayBUSD.transfer(user1.address, 500);
-
-    // Add tokens
-    await Point.insertToken(PlayBUSD.address, 10);
+    const [idoFactory, , , Play, PlayBUSD] = await initIDOFactory(operator, user0, user1, user2);
+    IDOFactory = idoFactory;
 
     // Create IDO
     await PlayBUSD.transfer(owner.address, 5000);
-    await IDOFactory.insertOperator(operator.address);
     await IDOFactory.connect(operator).createIDO(Play.address, 1000, PlayBUSD.address, 5000);
     await IDOFactory.setFeeRecipient(recipient.address);
     await IDOFactory.setFeePercent(10);
@@ -169,9 +128,9 @@ describe("IDO test", async () => {
       await expect(IDO.fund(user0.address, 10000)).to.be.revertedWith("IDO: fund amount is greater than the rest");
     });
 
-    it("Fund tiers.", async () => {
+    it("Fund tiers", async () => {
       if (contractNow > TIER_FUND_TIME) timeTravel(ONE_DAY_IN_SECONDS - contractNow);
-      await expect(IDO.fund(user0.address, 200)).to.be.revertedWith("IDO: fund amount is too much");
+      await expect(IDO.fund(user1.address, 800)).to.be.revertedWith("IDO: fund amount is too much");
     });
 
     it("Fund whitelisted users", async () => {
