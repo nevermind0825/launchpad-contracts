@@ -13,19 +13,29 @@ contract Point is Ownable {
 
     mapping(uint256 => TokenInfo) _tokenInfos;
     uint256 _tokenInfoNumber;
-    uint256 private _decimal; // this is decimal for weight.
 
+    // This is decimal for the weight.
+    uint256 private _decimal;
+
+    /**
+     * @notice Init decimal for weight.
+     * @param decimal: decimal for weight
+     */
     constructor(uint256 decimal) {
         _decimal = decimal;
     }
 
-    // modifiers
     modifier onlyIndex(uint256 indexTokenInfo) {
         require(indexTokenInfo < _tokenInfoNumber, "Point: the token index is invalid");
         _;
     }
 
-    // functions
+    /**
+     * @notice A new token info is inserted.
+     * @param token: Address of the token to insert
+     * @param weight: Weight of the token to insert
+     * @return index: Index of the inserted token
+     */
     function insertToken(address token, uint256 weight) external onlyOwner returns (uint256) {
         TokenInfo storage t = _tokenInfos[_tokenInfoNumber];
         t.token = token;
@@ -33,22 +43,36 @@ contract Point is Ownable {
         return _tokenInfoNumber++;
     }
 
-    function removeToken(uint256 indexTokenInfo) external onlyOwner onlyIndex(indexTokenInfo) {
-        delete _tokenInfos[indexTokenInfo];
+    /**
+     * @notice A token is removed.
+     * @param index: Index of token to remove
+     */
+    function removeToken(uint256 index) external onlyOwner onlyIndex(index) {
+        delete _tokenInfos[index];
     }
 
-    function getToken(uint256 indexTokenInfo)
+    /**
+     * @notice Get a token
+     * @param index: Index of a token to get
+     * @return tokenInfo: Return the token info (token address, token weight)
+     */
+    function getToken(uint256 index)
         external
         view
         onlyOwner
-        onlyIndex(indexTokenInfo)
+        onlyIndex(index)
         returns (address, uint256)
     {
-        TokenInfo storage t = _tokenInfos[indexTokenInfo];
+        TokenInfo storage t = _tokenInfos[index];
         require(t.token != address(0), "Point: you have already removed this token");
         return (t.token, t.weight);
     }
 
+    /**
+     * @notice Get user's point
+     * @param account: Address of user's account
+     * @return point: Return user's point
+     */
     function getPoint(address account) external view returns (uint256) {
         uint256 totalPoint = 0;
         for (uint256 i = 0; i < _tokenInfoNumber; i++) {
@@ -61,10 +85,18 @@ contract Point is Ownable {
         return totalPoint / (10**_decimal);
     }
 
+    /**
+     * @notice Set a decimal for weight.
+     * @param decimal: Decimal for weight
+     */
     function setDecimal(uint256 decimal) external onlyOwner {
         _decimal = decimal;
     }
 
+    /**
+     * @notice Get a decimal for weight.
+     * @return _decimal: Return decimal for weight
+     */
     function getDecimal() external view onlyOwner returns (uint256) {
         return _decimal;
     }
