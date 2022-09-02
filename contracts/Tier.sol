@@ -6,6 +6,10 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 
 import "./interfaces/IPoint.sol";
 
+/**
+ * @title Tier
+ * @notice Based on the token amount that users owned.
+ */
 contract Tier is Ownable {
     struct TierList {
         string tierName;
@@ -15,6 +19,9 @@ contract Tier is Ownable {
 
     TierList[] _tiers;
 
+    /**
+     * @notice By default, 4 tiers are added.
+     */
     constructor() {
         insertTier("Popular", 100, 1);
         insertTier("Star", 500, 5);
@@ -27,6 +34,13 @@ contract Tier is Ownable {
         _;
     }
 
+    /**
+     * @notice A new tier info is inserted.
+     * @param tierName: Name of the tier to insert
+     * @param minimumPoint: Minimum point of the tier to insert
+     * @param multiplier: Multiplier of the tier to insert
+     * @return index: Index of the added tier
+     */
     function insertTier(
         string memory tierName,
         uint256 minimumPoint,
@@ -36,6 +50,10 @@ contract Tier is Ownable {
         return _tiers.length - 1;
     }
 
+    /**
+     * @notice A tier is removed.
+     * @param index: Index of the tier to delete
+     */
     function removeTier(uint256 index) external onlyOwner onlyIndex(index) {
         for (uint256 i = index; i < _tiers.length - 1; i++) {
             _tiers[i] = _tiers[i + 1];
@@ -43,6 +61,13 @@ contract Tier is Ownable {
         _tiers.pop();
     }
 
+    /**
+     * @notice A tier is updated.
+     * @param index: Index of the tier to update
+     * @param tierName: Name of the tier to insert
+     * @param minimumPoint: Minimum point of the tier to insert
+     * @param multiplier: Multiplier of the tier to insert
+     */
     function updateTier(
         uint256 index,
         string memory tierName,
@@ -55,6 +80,11 @@ contract Tier is Ownable {
         t.multiplier = multiplier;
     }
 
+    /**
+     * @notice Get a tier
+     * @param index: Index of tier to get
+     * @return tierInfo: Tier info (name, minimum point, multiplier)
+     */
     function getTier(uint256 index)
         external
         view
@@ -69,6 +99,12 @@ contract Tier is Ownable {
         return (t.tierName, t.minimumPoint, t.multiplier);
     }
 
+    /**
+     * @notice Get multiplier of user
+     * @param point: Address of point contract
+     * @param user: Address of user's account
+     * @return multiplier: Return multiplier of user
+     */
     function getMultiplier(address point, address user) external view returns (uint256) {
         uint256 userPoint = IPoint(point).getPoint(user);
         int256 i = 0;
