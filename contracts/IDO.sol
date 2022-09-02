@@ -3,10 +3,17 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "hardhat/console.sol";
+// import "hardhat/console.sol";
 
 import "./IDOFactory.sol";
 
+/**
+ * @title IDO
+ * @notice An Initial DEX Offering, or IDO for short,
+ * is a new crowdfunding technique that enables cryptocurrency
+ * projects to introduce their native token or coin
+ * through decentralized exchanges (DEXs)
+ */
 contract IDO is Ownable {
     enum State {
         Waiting,
@@ -15,12 +22,14 @@ contract IDO is Ownable {
     }
 
     // constanst variables
-    uint256 constant TIER_FUND_TIME = 8 hours;
     // from 00:00 - 08:00, only tiers can fund.
-    uint256 constant WHITELISTED_USER_FUND_TIME = 16 hours;
+    uint256 constant TIER_FUND_TIME = 8 hours;
     // from 08:00 - 16:00, only whitelisted users can fund.
-    uint256 constant ANY_USERS_FUND_TIME = 24 hours; // from 16:00 - 00:00, any users can fund.
-    uint256 constant SECONDS_PER_DAY = 1 days; // this needs to get hours.
+    uint256 constant WHITELISTED_USER_FUND_TIME = 16 hours;
+    // from 16:00 - 00:00, any users can fund.
+    uint256 constant ANY_USERS_FUND_TIME = 24 hours;
+    // this needs to get hours.
+    uint256 constant SECONDS_PER_DAY = 1 days;
 
     // IDO variables
     address _fundToken;
@@ -44,6 +53,13 @@ contract IDO is Ownable {
 
     State private _state = State.Waiting;
 
+    /**
+     * @notice IDOFacotry owner creates IDO contract
+     * @param fundToken: Address of fund token
+     * @param fundAmount: Amount of fund token
+     * @param saleToken: Address of sale token
+     * @param saleAmount: Amount of sale token
+     */
     constructor(
         address fundToken,
         uint256 fundAmount,
@@ -59,7 +75,7 @@ contract IDO is Ownable {
     }
 
     modifier onlyInTime(uint256 from, uint256 to) {
-        require(block.timestamp > from, "IDO: time is not yet");
+        require(block.timestamp >= from, "IDO: time is not yet");
         require(block.timestamp < to, "IDO: time has already passed");
         _;
     }
@@ -84,21 +100,40 @@ contract IDO is Ownable {
         _;
     }
 
+    /**
+     * @notice Operator sets the time to start
+     * @param startTime: timestamp that the sale will start
+     */
     function setStartTime(uint256 startTime) external onlyOperator onlyBefore(_startTime) {
         require(startTime > block.timestamp, "IDO: start time is greater than now");
         _startTime = startTime;
     }
 
+    /**
+     * @notice Operator sets the time to end
+     * @param endTime: timestamp that the sale will end
+     */
     function setEndTime(uint256 endTime) external onlyOperator onlyBefore(_endTime) {
         require(_startTime <= endTime, "IDO: end time must be greater than start time");
         _endTime = endTime;
     }
 
+    /**
+     * @notice Operator sets the time to claim
+     * @param claimTime: timestamp that users can start claiming the saleToken
+     */
     function setClaimTime(uint256 claimTime) external onlyOperator onlyBefore(_claimTime) {
         require(_endTime < claimTime, "IDO: claim time must be greater than end time");
         _claimTime = claimTime;
     }
 
+    /**
+     * @notice Operator sets factors for vesting saleToken
+     * @param tge: percent to claim till cliffTime
+     * @param cliffTime: timestamp to claim with tge
+     * @param duration: after cliffTime, How long funders can claim
+     * @param periodicity: after cliffTime, How often funders claim
+     */
     function setVestInfo(
         uint256 tge,
         uint256 cliffTime,
@@ -114,23 +149,46 @@ contract IDO is Ownable {
         _periodicity = periodicity;
     }
 
+    /**
+     * @notice Operator sets the base amount
+     * @param baseAmount: tiers can fund up to “baseAmount * multiplier” during Tier Fund Round
+     */
     function setBaseAmount(uint256 baseAmount) external onlyOperator onlyBefore(_startTime) {
         _baseAmount = baseAmount;
     }
 
+    /**
+     * @notice Operator sets the max amount per user
+     * @param maxAmountPerUser: investors can fund up to this value during FCFS round
+     */
     function setMaxAmountPerUser(uint256 maxAmountPerUser) external onlyOperator onlyBefore(_startTime) {
         _maxAmountPerUser = maxAmountPerUser;
     }
 
+    /**
+     * @notice Operator sets the info of sale
+     * @param fundAmount: Amount of fund token
+     * @param saleAmount: Amount of sale token
+     */
     function setSaleInfo(uint256 fundAmount, uint256 saleAmount) external onlyOperator onlyBefore(_startTime) {
         _fundAmount = fundAmount;
         _saleAmount = saleAmount;
     }
 
+    /**
+     * @notice Operator sets the whitelisted user
+     * @param funder: Address of funder
+     * @param amount: Amount of the fund token
+     */
     function setWhitelistAmount(address funder, uint256 amount) external onlyOperator onlyBefore(_startTime) {
         _whitelistedAmounts[funder] = amount;
     }
 
+    /**
+     * @notice Operator sets whitelisted users
+     * @param funders: Array of the funder address
+     * @param amounts: Array of the fund token amount
+     */
     function setWhitelistAmounts(address[] memory funders, uint256[] memory amounts)
         external
         onlyOperator
@@ -141,10 +199,17 @@ contract IDO is Ownable {
         }
     }
 
+    /**
+     * @notice IDOFacotory owner finalizes the IDO
+     * @param idoFactoryOwner: Address of the IDOFactory owner
+     * @param finalizer: Address of user account sending the fund token
+     * @param feePercent: "feePercent" of "totalFunded" will be sent to "feeRecipient" address
+     * @param feeRecipient: "feePercent" of "totalFunded" will be sent to "feeRecipient" address
+     */
     function finalize(
         address idoFactoryOwner,
         address finalizer,
-        uint256 feePrecent,
+        uint256 feePercent,
         address feeRecipient
     ) external onlyOwner {
         require(block.timestamp > _endTime, "IDO: IDO is not ended yet");
@@ -152,7 +217,7 @@ contract IDO is Ownable {
         if (_fundedAmount < (_fundAmount * 51) / 100) {
             _state = State.Failure;
         } else {
-            uint256 feeAmout = (feePrecent * _fundedAmount) / 100;
+            uint256 feeAmout = (feePercent * _fundedAmount) / 100;
             _state = State.Success;
             // console.log("fee recipient:", feeRecipient, feeAmout);
             IERC20(_fundToken).transfer(feeRecipient, feeAmout);
@@ -166,10 +231,19 @@ contract IDO is Ownable {
         }
     }
 
+    /**
+     * @notice Get a sate of IDO
+     * @return _state: Return the IDO state
+     */
     function getState() external view returns (State) {
         return _state;
     }
 
+    /**
+     * @notice Users fund
+     * @param funder: Funder address
+     * @param amount: Fund token amount
+     */
     function fund(address funder, uint256 amount) external onlyInTime(_startTime, _endTime) onlyFundAmount(amount) {
         require(_state == State.Waiting, "IDO: funder can't fund");
         uint256 nowHours = block.timestamp % SECONDS_PER_DAY;
@@ -191,6 +265,11 @@ contract IDO is Ownable {
         IERC20(_fundToken).transferFrom(funder, address(this), amount);
     }
 
+    /**
+     * @notice Users claim
+     * @param claimer: Claimer address
+     * @param amount: Claim token amount
+     */
     function claim(address claimer, uint256 amount) external onlyFunder(claimer) {
         require(block.timestamp > _claimTime, "IDO: claim time is not yet");
         require(_state == State.Success, "IDO: state is not success");
@@ -205,6 +284,10 @@ contract IDO is Ownable {
         IERC20(_saleToken).transfer(claimer, amount);
     }
 
+    /**
+     * @notice Users refund the funded token
+     * @param refunder: Refunder address
+     */
     function refund(address refunder) external onlyFunder(refunder) {
         require(_state == State.Failure, "IDO: state is not failure");
         uint256 amount = _fundedAmounts[refunder];
@@ -212,6 +295,9 @@ contract IDO is Ownable {
         IERC20(_fundToken).transfer(refunder, amount);
     }
 
+    /**
+     * @notice IDOFactory owner calls to cancel the IDO
+     */
     function emergencyRefund() external onlyOwner onlyBefore(_endTime) {
         _state = State.Failure;
     }
