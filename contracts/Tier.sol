@@ -52,7 +52,7 @@ contract Tier is Ownable {
 
     /**
      * @notice A tier is removed.
-     * @param index: Index of the tier to delete
+     * @param index: Index of the tier to remove
      */
     function removeTier(uint256 index) external onlyOwner onlyIndex(index) {
         for (uint256 i = index; i < _tiers.length - 1; i++) {
@@ -64,9 +64,9 @@ contract Tier is Ownable {
     /**
      * @notice A tier is updated.
      * @param index: Index of the tier to update
-     * @param tierName: Name of the tier to insert
-     * @param minimumPoint: Minimum point of the tier to insert
-     * @param multiplier: Multiplier of the tier to insert
+     * @param tierName: Name of the tier to update
+     * @param minimumPoint: Minimum point of the tier to update
+     * @param multiplier: Multiplier of the tier to update
      */
     function updateTier(
         uint256 index,
