@@ -5,6 +5,10 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 // import "hardhat/console.sol";
 
+/**
+ * @title Point
+ * @notice Get users' points based on the token amount that users owned.
+ */
 contract Point is Ownable {
     struct TokenInfo {
         address token;
