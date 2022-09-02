@@ -8,6 +8,10 @@ import "@openzeppelin/contracts/interfaces/IERC20.sol";
 import "./IDO.sol";
 import "./interfaces/ITier.sol";
 
+/**
+ * @title IDOFactory
+ * @notice IDOFactoy creates IDOs.
+ */
 contract IDOFactory is Ownable {
     address _feeRecipient;
     uint256 _feePercent;
@@ -19,6 +23,11 @@ contract IDOFactory is Ownable {
     address _tier;
     address _point;
 
+    /**
+     * @notice Set tier and point address
+     * @param tier: Addres of tier contract
+     * @param point: Address of point contract
+     */
     constructor(address tier, address point) {
         _tier = tier;
         _point = point;
