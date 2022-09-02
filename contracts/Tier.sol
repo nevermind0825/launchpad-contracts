@@ -83,7 +83,7 @@ contract Tier is Ownable {
     /**
      * @notice Get a tier
      * @param index: Index of tier to get
-     * @return tierInfo: Tier info (name, minimum point, multiplier)
+     * @return tierInfo: Return the tier info (name, minimum point, multiplier)
      */
     function getTier(uint256 index)
         external
