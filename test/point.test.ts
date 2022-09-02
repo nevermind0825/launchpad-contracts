@@ -6,12 +6,12 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 describe("Point test", () => {
   let Point: Contract;
   let Play: Contract, PlayBUSD: Contract; // token contracts
-  let user0: SignerWithAddress;
+  let owner: SignerWithAddress;
   let user1: SignerWithAddress;
   let user2: SignerWithAddress;
 
   beforeEach(async () => {
-    [user0, user1, user2] = await ethers.getSigners();
+    [owner, user1, user2] = await ethers.getSigners();
 
     // Point contract deploy.
     const point = await ethers.getContractFactory("Point");
@@ -36,27 +36,9 @@ describe("Point test", () => {
     await PlayBUSD.transfer(user2.address, 300);
   });
 
-  it("Check onwer", async () => {
-    await expect(Point.connect(user1).insertToken(Play.address, 8)).to.be.revertedWith(
-      "Ownable: caller is not the owner",
-    );
-    await expect(Point.connect(user1).removeToken(0)).to.be.revertedWith("Ownable: caller is not the owner");
-  });
-
   it("Set and get decimal", async () => {
-    await Point.connect(user0).setDecimal(2);
-    expect(await Point.connect(user0).getDecimal()).to.equal(2);
-  });
-
-  it("Add, get and remove token", async () => {
-    await Point.insertToken(Play.address, 8);
-    await Point.insertToken(PlayBUSD.address, 15);
-    await expect(Point.getToken(2)).to.be.revertedWith("Point: the token index is invalid");
-    const tokenInfo = await Point.getToken(1);
-    expect(tokenInfo[0]).to.equal(PlayBUSD.address);
-    expect(tokenInfo[1].eq(BigNumber.from(15))).to.equal(true);
-    await Point.removeToken(1);
-    await expect(Point.getToken(1)).to.be.revertedWith("Point: you have already removed this token");
+    await Point.connect(owner).setDecimal(2);
+    expect(await Point.connect(owner).getDecimal()).to.equal(2);
   });
 
   it("Get Point", async () => {
@@ -65,5 +47,36 @@ describe("Point test", () => {
     expect(await Point.getPoint(user1.address)).to.equal(830); // 100 * 0.8 + 500 * 1.5 = 830
     await Point.removeToken(1);
     expect(await Point.getPoint(user1.address)).to.equal(80); // 100 * 0.8
+  });
+
+  describe("Check onwer functions", async () => {
+    it("Check insertToken function", async () => {
+      await expect(Point.connect(user1).insertToken(Play.address, 8)).to.be.revertedWith(
+        "Ownable: caller is not the owner",
+      );
+    });
+
+    it("Check removeToken function", async () => {
+      await expect(Point.connect(user1).removeToken(0)).to.be.revertedWith("Ownable: caller is not the owner");
+    });
+  });
+
+  describe("Check token functions", async () => {
+    beforeEach("Insert Token", async () => {
+      await Point.insertToken(Play.address, 8);
+      await Point.insertToken(PlayBUSD.address, 15);
+    });
+
+    it("Check getToken function", async () => {
+      await expect(Point.getToken(2)).to.be.revertedWith("Point: the token index is invalid");
+      const tokenInfo = await Point.getToken(1);
+      expect(tokenInfo[0]).to.equal(PlayBUSD.address);
+      expect(tokenInfo[1].eq(BigNumber.from(15))).to.equal(true);
+    });
+
+    it("Check removeToken funtion", async () => {
+      await Point.removeToken(1);
+      await expect(Point.getToken(1)).to.be.revertedWith("Point: you have already removed this token");
+    });
   });
 });
