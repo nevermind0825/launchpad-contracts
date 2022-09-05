@@ -3,7 +3,7 @@ import { ethers } from "hardhat";
 import { expect } from "chai";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 
-import { initTier } from "./IDO.behavior";
+import { initTier } from "./utils/IDO.behavior";
 
 describe("Tier test", () => {
   let Tier: Contract;

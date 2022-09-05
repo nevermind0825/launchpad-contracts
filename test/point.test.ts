@@ -3,7 +3,7 @@ import { ethers } from "hardhat";
 import { expect } from "chai";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 
-import { initPoint, insertTokenForPoint } from "./IDO.behavior";
+import { initPoint, insertTokenForPoint } from "./utils/IDO.behavior";
 
 describe("Point test", () => {
   let Point: Contract;

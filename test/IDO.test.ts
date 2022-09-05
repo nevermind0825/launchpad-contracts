@@ -4,9 +4,9 @@ import { ethers } from "hardhat";
 import { expect } from "chai";
 import moment from "moment";
 
-import { timeTravel } from "./helper";
-import { ONE_DAY_IN_SECONDS, TIER_FUND_TIME, WHITELISTED_USER_FUND_TIME, FAILURE } from "./constants";
-import { initIDOFactory } from "./IDO.behavior";
+import { timeTravel } from "./utils/helpers";
+import { ONE_DAY_IN_SECONDS, TIER_FUND_TIME, WHITELISTED_USER_FUND_TIME, FAILURE } from "./utils/constants";
+import { initIDOFactory } from "./utils/IDO.behavior";
 
 describe("IDO test", async () => {
   let IDOFactory: Contract;
