@@ -3,7 +3,7 @@ import { Contract } from "ethers";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
 
-import { initIDOFactory } from "./IDO.behavior";
+import { initIDOFactory } from "./utils/IDO.behavior";
 
 describe("IDOFactory test", () => {
   let IDOFactory: Contract;
@@ -28,7 +28,7 @@ describe("IDOFactory test", () => {
     });
 
     it("Check removeOperator function", async () => {
-      await expect(IDOFactory.connect(user0).removeOperator(0)).to.be.revertedWith("Ownable: caller is not the owner");
+      await expect(IDOFactory.connect(user0).removeOperator(operator.address)).to.be.revertedWith("Ownable: caller is not the owner");
     });
 
     it("Check setFeePercent function", async () => {
@@ -54,25 +54,11 @@ describe("IDOFactory test", () => {
 
   describe("Check operator functions", async () => {
     it("Check removeOperator function", async () => {
-      await expect(IDOFactory.removeOperator(1)).to.be.revertedWith("IDOFactory: operator index is invalid");
-      await IDOFactory.insertOperator(user1.address);
-      await IDOFactory.removeOperator(0);
-    });
-
-    it("Check insertOperator function", async () => {
-      await expect(IDOFactory.insertOperator(operator.address)).to.be.revertedWith(
-        "IDOFactory: you have already inserted the operator",
-      );
+      await IDOFactory.removeOperator(operator.address);
     });
   });
 
   describe("Check createIDO function", async () => {
-    it("Check operator", async () => {
-      await expect(IDOFactory.connect(user0).createIDO(Play.address, 1000, PlayBUSD.address, 5000)).to.be.revertedWith(
-        "IDOFactory: caller is not the operator",
-      );
-    });
-
     it("Check parameters of createIDO function", async () => {
       await expect(IDOFactory.connect(operator).createIDO(Play.address, 0, PlayBUSD.address, 0)).to.be.revertedWith(
         "IDO: amount must be greater than zero",

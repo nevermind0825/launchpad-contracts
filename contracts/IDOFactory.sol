@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/interfaces/IERC20.sol";
+import "@openzeppelin/contracts/access/AccessControl.sol";
 // import "hardhat/console.sol";
 
 import "./IDO.sol";
@@ -12,39 +13,34 @@ import "./interfaces/ITier.sol";
  * @title IDOFactory
  * @notice IDOFactoy creates IDOs.
  */
-contract IDOFactory is Ownable {
-    address _feeRecipient;
-    uint256 _feePercent;
+contract IDOFactory is Ownable, AccessControl {
+    address private _feeRecipient;
+    uint256 private _feePercent;
 
-    IDO[] _ctrtIDOs;
+    IDO[] private _ctrtIDOs;
 
-    address[] _operators;
+    address private _tier;
+    address private _point;
 
-    address _tier;
-    address _point;
+    bytes32 public constant IDO_ADMIN = keccak256("IDO_ADMIN");
+    bytes32 public constant IDO_OPERATOR = keccak256("IDO_OPERATOR");
 
     /**
-     * @notice Set tier and point address
+     * @notice Set tier, point address and roles.
      * @param tier: Addres of tier contract
      * @param point: Address of point contract
      */
     constructor(address tier, address point) {
         _tier = tier;
         _point = point;
-    }
-
-    modifier inOperators(uint256 index) {
-        require(_operators.length > index, "IDOFactory: operator index is invalid");
-        _;
+        // set IDO_ADMIN as IDO_OPERATOR's admin role.
+        _setRoleAdmin(IDO_OPERATOR, IDO_ADMIN);
+        // Grants IDO_ADMIN to msg.sender(owner).
+        _setupRole(IDO_ADMIN, msg.sender);
     }
 
     modifier inIDOs(uint256 index) {
         require(_ctrtIDOs.length > index, "IDOFactory: IDO index is invalid");
-        _;
-    }
-
-    modifier onlyOperator() {
-        require(isOperator(msg.sender), "IDOFactory: caller is not the operator");
         _;
     }
 
@@ -61,7 +57,7 @@ contract IDOFactory is Ownable {
         uint256 fundAmount,
         address saleToken,
         uint256 saleAmount
-    ) external onlyOperator returns (uint256) {
+    ) external onlyRole(IDO_OPERATOR) returns (uint256) {
         require(IERC20(saleToken).balanceOf(owner()) >= saleAmount, "IDOFactroy: balance of owner is not enough");
         IDO ido = new IDO(fundToken, fundAmount, saleToken, saleAmount);
         _ctrtIDOs.push(ido);
@@ -108,23 +104,17 @@ contract IDOFactory is Ownable {
     /**
      * @notice IDOFactory owner inserts a operator
      * @param operator: Address of operator
-     * @return index: Index of the inserted operator
      */
-    function insertOperator(address operator) external onlyOwner returns (uint256) {
-        require(!isOperator(operator), "IDOFactory: you have already inserted the operator");
-        _operators.push(operator);
-        return _operators.length - 1;
+    function insertOperator(address operator) external onlyOwner {
+        grantRole(IDO_OPERATOR, operator);
     }
 
     /**
      * @notice IDOFactory owner removes a operator
-     * @param index: Index of the operator
+     * @param operator: Operator address to remove
      */
-    function removeOperator(uint256 index) external onlyOwner inOperators(index) {
-        for (uint256 i = index; i < _operators.length - 1; i++) {
-            _operators[i] = _operators[i + 1];
-        }
-        _operators.pop();
+    function removeOperator(address operator) external onlyOwner {
+        revokeRole(IDO_OPERATOR, operator);
     }
 
     /**
@@ -151,9 +141,6 @@ contract IDOFactory is Ownable {
      * @return isOperator: Return true if user is an operator, false otherwise
      */
     function isOperator(address addr) public view returns (bool) {
-        for (uint256 i = 0; i < _operators.length; i++) {
-            if (_operators[i] == addr) return true;
-        }
-        return false;
+        return hasRole(IDO_OPERATOR, addr);
     }
 }
