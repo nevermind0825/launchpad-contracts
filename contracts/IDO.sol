@@ -23,33 +23,33 @@ contract IDO is Ownable {
 
     // constanst variables
     // from 00:00 - 08:00, only tiers can fund.
-    uint256 constant TIER_FUND_TIME = 8 hours;
+    uint256 public constant TIER_FUND_TIME = 8 hours;
     // from 08:00 - 16:00, only whitelisted users can fund.
-    uint256 constant WHITELISTED_USER_FUND_TIME = 16 hours;
+    uint256 public constant WHITELISTED_USER_FUND_TIME = 16 hours;
     // from 16:00 - 00:00, any users can fund.
-    uint256 constant ANY_USERS_FUND_TIME = 24 hours;
+    uint256 public constant ANY_USERS_FUND_TIME = 24 hours;
     // this needs to get hours.
-    uint256 constant SECONDS_PER_DAY = 1 days;
+    uint256 public constant SECONDS_PER_DAY = 1 days;
 
     // IDO variables
-    address _fundToken;
-    uint256 _fundAmount;
-    uint256 _fundedAmount;
-    address _saleToken;
-    uint256 _saleAmount;
-    uint256 _startTime;
-    uint256 _endTime;
-    uint256 _claimTime;
-    uint256 _tge;
-    uint256 _cliffTime;
-    uint256 _duration;
-    uint256 _periodicity;
-    uint256 _baseAmount;
-    uint256 _maxAmountPerUser;
-    uint256 _perAmount;
-    mapping(address => uint256) _whitelistedAmounts;
-    mapping(address => uint256) _fundedAmounts;
-    mapping(address => uint256) _claimedAmounts;
+    address private _fundToken;
+    uint256 private _fundAmount;
+    uint256 private _fundedAmount;
+    address private _saleToken;
+    uint256 private _saleAmount;
+    uint256 private _startTime;
+    uint256 private _endTime;
+    uint256 private _claimTime;
+    uint256 private _tge;
+    uint256 private _cliffTime;
+    uint256 private _duration;
+    uint256 private _periodicity;
+    uint256 private _baseAmount;
+    uint256 private _maxAmountPerUser;
+    uint256 private _perAmount;
+    mapping(address => uint256) private _whitelistedAmounts;
+    mapping(address => uint256) private _fundedAmounts;
+    mapping(address => uint256) private _claimedAmounts;
 
     State private _state = State.Waiting;
 
@@ -302,9 +302,5 @@ contract IDO is Ownable {
      */
     function emergencyRefund() external onlyOwner onlyBefore(_endTime) {
         _state = State.Failure;
-    }
-
-    function getNowTime() external view returns (uint256) {
-        return block.timestamp;
     }
 }

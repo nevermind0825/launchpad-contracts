@@ -4,7 +4,7 @@ import { ethers } from "hardhat";
 import { expect } from "chai";
 import moment from "moment";
 
-import { timeTravel } from "./utils/helpers";
+import { timeTravel, getTimeStamp } from "./utils/helpers";
 import { ONE_DAY_IN_SECONDS, TIER_FUND_TIME, WHITELISTED_USER_FUND_TIME, FAILURE } from "./utils/constants";
 import { initIDOFactory } from "./utils/IDO.behavior";
 
@@ -36,8 +36,8 @@ describe("IDO test", async () => {
     IDO = ido.attach(idoAddr);
 
     // Init IDO property
-    const contractNow = await IDO.getNowTime();
-    momentNow = moment.unix(contractNow.toNumber()); // 2022-09-01
+    const contractNow = await getTimeStamp();
+    momentNow = moment.unix(contractNow); // 2022-09-01
     await IDO.connect(operator).setStartTime(momentNow.add(10, "days").unix()); // 2022-09-11
     await IDO.connect(operator).setEndTime(momentNow.add(9, "days").unix()); // 2022-09-20
     await IDO.connect(operator).setClaimTime(momentNow.add(2, "days").unix()); // 2022-09-22
@@ -120,7 +120,7 @@ describe("IDO test", async () => {
     let contractNow: number;
 
     beforeEach(async () => {
-      contractNow = (await IDO.getNowTime()) % ONE_DAY_IN_SECONDS;
+      contractNow = (await getTimeStamp()) % ONE_DAY_IN_SECONDS;
       timeTravel(moment.duration(10, "days").asSeconds());
     });
 
