@@ -28,7 +28,9 @@ describe("IDOFactory test", () => {
     });
 
     it("Check removeOperator function", async () => {
-      await expect(IDOFactory.connect(user0).removeOperator(operator.address)).to.be.revertedWith("Ownable: caller is not the owner");
+      await expect(IDOFactory.connect(user0).removeOperator(operator.address)).to.be.revertedWith(
+        "Ownable: caller is not the owner",
+      );
     });
 
     it("Check setFeePercent function", async () => {
@@ -59,6 +61,12 @@ describe("IDOFactory test", () => {
   });
 
   describe("Check createIDO function", async () => {
+    it("Check an operator of createIDO function", async () => {
+      await expect(IDOFactory.createIDO(Play.address, 0, PlayBUSD.address, 0)).to.be.revertedWith(
+        "IDOFactory: caller is not operator",
+      );
+    });
+
     it("Check parameters of createIDO function", async () => {
       await expect(IDOFactory.connect(operator).createIDO(Play.address, 0, PlayBUSD.address, 0)).to.be.revertedWith(
         "IDO: amount must be greater than zero",

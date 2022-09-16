@@ -3,7 +3,6 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/interfaces/IERC20.sol";
-import "@openzeppelin/contracts/access/AccessControl.sol";
 // import "hardhat/console.sol";
 
 import "./IDO.sol";
@@ -13,7 +12,7 @@ import "./interfaces/ITier.sol";
  * @title IDOFactory
  * @notice IDOFactoy creates IDOs.
  */
-contract IDOFactory is Ownable, AccessControl {
+contract IDOFactory is Ownable {
     address private _feeRecipient;
     uint256 private _feePercent;
 
@@ -22,8 +21,7 @@ contract IDOFactory is Ownable, AccessControl {
     address private _tier;
     address private _point;
 
-    bytes32 public constant IDO_ADMIN = keccak256("IDO_ADMIN");
-    bytes32 public constant IDO_OPERATOR = keccak256("IDO_OPERATOR");
+    mapping (address => bool) private operators;
 
     /**
      * @notice Set tier, point address and roles.
@@ -33,14 +31,15 @@ contract IDOFactory is Ownable, AccessControl {
     constructor(address tier, address point) {
         _tier = tier;
         _point = point;
-        // set IDO_ADMIN as IDO_OPERATOR's admin role.
-        _setRoleAdmin(IDO_OPERATOR, IDO_ADMIN);
-        // Grants IDO_ADMIN to msg.sender(owner).
-        _setupRole(IDO_ADMIN, msg.sender);
     }
 
     modifier inIDOs(uint256 index) {
         require(_ctrtIDOs.length > index, "IDOFactory: IDO index is invalid");
+        _;
+    }
+
+    modifier onlyOperator() {
+        require(operators[msg.sender], "IDOFactory: caller is not operator");
         _;
     }
 
@@ -57,7 +56,7 @@ contract IDOFactory is Ownable, AccessControl {
         uint256 fundAmount,
         address saleToken,
         uint256 saleAmount
-    ) external onlyRole(IDO_OPERATOR) returns (uint256) {
+    ) external onlyOperator() returns (uint256) {
         require(IERC20(saleToken).balanceOf(owner()) >= saleAmount, "IDOFactroy: balance of owner is not enough");
         IDO ido = new IDO(fundToken, fundAmount, saleToken, saleAmount);
         _ctrtIDOs.push(ido);
@@ -106,7 +105,7 @@ contract IDOFactory is Ownable, AccessControl {
      * @param operator: Address of operator
      */
     function insertOperator(address operator) external onlyOwner {
-        grantRole(IDO_OPERATOR, operator);
+        operators[operator] = true;
     }
 
     /**
@@ -114,7 +113,7 @@ contract IDOFactory is Ownable, AccessControl {
      * @param operator: Operator address to remove
      */
     function removeOperator(address operator) external onlyOwner {
-        revokeRole(IDO_OPERATOR, operator);
+        operators[operator] = false;
     }
 
     /**
@@ -141,6 +140,6 @@ contract IDOFactory is Ownable, AccessControl {
      * @return isOperator: Return true if user is an operator, false otherwise
      */
     function isOperator(address addr) public view returns (bool) {
-        return hasRole(IDO_OPERATOR, addr);
+        return operators[addr];
     }
 }
