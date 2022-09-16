@@ -56,7 +56,7 @@ contract Point is Ownable {
      */
     function removeToken(uint256 index) external onlyOwner onlyIndex(index) {
         _tokenInfos[index] = _tokenInfos[_tokenInfos.length - 1];
-        _tokenInfos.push();
+        _tokenInfos.pop();
     }
 
     /**
