@@ -66,7 +66,6 @@ contract Point is Ownable {
      */
     function getToken(uint256 index) external view onlyOwner onlyIndex(index) returns (address, uint256) {
         TokenInfo storage t = _tokenInfos[index];
-        require(t.token != address(0), "Point: you have already removed this token");
         return (t.token, t.weight);
     }
 
@@ -79,9 +78,7 @@ contract Point is Ownable {
         uint256 totalPoint = 0;
         for (uint256 i = 0; i < _tokenInfos.length; i++) {
             TokenInfo storage t = _tokenInfos[i];
-            if (t.token != address(0)) {
-                totalPoint += IERC20(t.token).balanceOf(account) * t.weight;
-            }
+            totalPoint += IERC20(t.token).balanceOf(account) * t.weight;
         }
 
         return totalPoint / (10**_decimal);

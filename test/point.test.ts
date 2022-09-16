@@ -64,7 +64,7 @@ describe("Point test", () => {
 
     it("Check removeToken funtion", async () => {
       await Point.removeToken(1);
-      await expect(Point.getToken(1)).to.be.revertedWith("Point: you have already removed this token");
+      await expect(Point.getToken(1)).to.be.revertedWith("Point: the token index is invalid");
     });
   });
 });
