@@ -17,7 +17,7 @@ contract Tier is Ownable {
         uint256 multiplier;
     }
 
-    TierList[] _tiers;
+    TierList[] private _tiers;
 
     /**
      * @notice By default, 4 tiers are added.
@@ -55,9 +55,7 @@ contract Tier is Ownable {
      * @param index: Index of the tier to remove
      */
     function removeTier(uint256 index) external onlyOwner onlyIndex(index) {
-        for (uint256 i = index; i < _tiers.length - 1; i++) {
-            _tiers[i] = _tiers[i + 1];
-        }
+        _tiers[index] = _tiers[_tiers.length - 1];
         _tiers.pop();
     }
 

@@ -45,6 +45,16 @@ describe("Point test", () => {
       await insertTokenForPoint(Point, Play, PlayBUSD);
     });
 
+    it("Check insertToken function", async () => {
+      await expect(Point.insertToken(ethers.constants.AddressZero, 8)).to.be.revertedWith(
+        "Point: token addres is invalid.",
+      );
+      await expect(Point.insertToken(Play.address, 0)).to.be.revertedWith(
+        "Point: token weight must be greater than zero.",
+      );
+      await expect(Point.insertToken(Play.address, 8)).to.be.revertedWith("Point: the token is already inserted.");
+    });
+
     it("Check getToken function", async () => {
       await expect(Point.getToken(2)).to.be.revertedWith("Point: the token index is invalid");
       const tokenInfo = await Point.getToken(1);

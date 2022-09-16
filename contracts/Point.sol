@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 // import "hardhat/console.sol";
 
 /**
@@ -15,8 +16,7 @@ contract Point is Ownable {
         uint256 weight;
     }
 
-    mapping(uint256 => TokenInfo) _tokenInfos;
-    uint256 _tokenInfoNumber;
+    TokenInfo[] private _tokenInfos;
 
     // This is decimal for the weight.
     uint256 private _decimal;
@@ -30,7 +30,7 @@ contract Point is Ownable {
     }
 
     modifier onlyIndex(uint256 indexTokenInfo) {
-        require(indexTokenInfo < _tokenInfoNumber, "Point: the token index is invalid");
+        require(indexTokenInfo < _tokenInfos.length, "Point: the token index is invalid");
         _;
     }
 
@@ -41,10 +41,13 @@ contract Point is Ownable {
      * @return index: Index of the inserted token
      */
     function insertToken(address token, uint256 weight) external onlyOwner returns (uint256) {
-        TokenInfo storage t = _tokenInfos[_tokenInfoNumber];
-        t.token = token;
-        t.weight = weight;
-        return _tokenInfoNumber++;
+        require(token != address(0), "Point: token addres is invalid.");
+        require(weight > 0, "Point: token weight must be greater than zero.");
+        for (uint256 i = 0; i < _tokenInfos.length; i++) {
+            require(_tokenInfos[i].token != token, "Point: the token is already inserted.");
+        }
+        _tokenInfos.push(TokenInfo(token, weight));
+        return _tokenInfos.length - 1;
     }
 
     /**
@@ -52,7 +55,8 @@ contract Point is Ownable {
      * @param index: Index of token to remove
      */
     function removeToken(uint256 index) external onlyOwner onlyIndex(index) {
-        delete _tokenInfos[index];
+        _tokenInfos[index] = _tokenInfos[_tokenInfos.length - 1];
+        _tokenInfos.push();
     }
 
     /**
@@ -60,13 +64,7 @@ contract Point is Ownable {
      * @param index: Index of a token to get
      * @return tokenInfo: Return the token info (token address, token weight)
      */
-    function getToken(uint256 index)
-        external
-        view
-        onlyOwner
-        onlyIndex(index)
-        returns (address, uint256)
-    {
+    function getToken(uint256 index) external view onlyOwner onlyIndex(index) returns (address, uint256) {
         TokenInfo storage t = _tokenInfos[index];
         require(t.token != address(0), "Point: you have already removed this token");
         return (t.token, t.weight);
@@ -79,7 +77,7 @@ contract Point is Ownable {
      */
     function getPoint(address account) external view returns (uint256) {
         uint256 totalPoint = 0;
-        for (uint256 i = 0; i < _tokenInfoNumber; i++) {
+        for (uint256 i = 0; i < _tokenInfos.length; i++) {
             TokenInfo storage t = _tokenInfos[i];
             if (t.token != address(0)) {
                 totalPoint += IERC20(t.token).balanceOf(account) * t.weight;
