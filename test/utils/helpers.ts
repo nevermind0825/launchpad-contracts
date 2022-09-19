@@ -10,3 +10,8 @@ export const getTimeStamp = async () => {
   const blockTimestamp = (await hre.network.provider.send("eth_getBlockByNumber", [blockNumber, false])).timestamp;
   return parseInt(blockTimestamp.slice(2), 16);
 };
+
+export const getLatestBlockTimestamp = async (): Promise<number> => {
+  const latestBlock = await ethers.provider.getBlock("latest");
+  return latestBlock.timestamp;
+};

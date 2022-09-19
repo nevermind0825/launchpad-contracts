@@ -21,15 +21,8 @@ contract IDO is Ownable {
         Failure
     }
 
-    // constanst variables
-    // from 00:00 - 08:00, only tiers can fund.
-    uint256 public constant TIER_FUND_TIME = 8 hours;
-    // from 08:00 - 16:00, only whitelisted users can fund.
-    uint256 public constant WHITELISTED_USER_FUND_TIME = 16 hours;
-    // from 16:00 - 00:00, any users can fund.
-    uint256 public constant ANY_USERS_FUND_TIME = 24 hours;
-    // this needs to get hours.
-    uint256 public constant SECONDS_PER_DAY = 1 days;
+    uint256 private _tierFundTime;
+    uint256 private _whitelistedFundTime;
 
     // IDO variables
     address private _fundToken;
@@ -116,6 +109,32 @@ contract IDO is Ownable {
     function setEndTime(uint256 endTime) external onlyOperator onlyBefore(_endTime) {
         require(_startTime <= endTime, "IDO: end time must be greater than start time");
         _endTime = endTime;
+        _tierFundTime = (_endTime - _startTime) / 3 + _startTime;
+        _whitelistedFundTime = (_endTime - _startTime) * 2 / 3 + _startTime;
+    }
+
+    /**
+     * @notice Get end time that users can fund.
+     * @return _endTime timestamp of the end time.
+     */
+    function getEndTime() external view returns(uint) {
+        return _endTime;
+    }
+
+    /**
+     * @notice Get time that tiers can fund.
+     * @return _tierFundTime timestamp that tiers can fund.
+     */
+    function getTierFundTime() external view returns(uint) {
+        return _tierFundTime;
+    }
+
+    /**
+     * @notice Get time that whitelisted users can fund.
+     * @return _whitelistedFundTime timestamp that whitelisted users can fund.
+     */
+    function getWhitelistedFundTime() external view returns(uint) {
+        return _whitelistedFundTime;
     }
 
     /**
@@ -246,14 +265,14 @@ contract IDO is Ownable {
      */
     function fund(address funder, uint256 amount) external onlyInTime(_startTime, _endTime) onlyFundAmount(amount) {
         require(_state == State.Waiting, "IDO: funder can't fund");
-        uint256 nowHours = block.timestamp % SECONDS_PER_DAY;
         uint256 maxFundAmount = 0;
+        // console.log(block.timestamp);
 
-        if (nowHours < TIER_FUND_TIME) {
+        if (block.timestamp < _tierFundTime) {
             uint256 multiplier = IDOFactory(owner()).getMultiplier(funder);
             maxFundAmount = multiplier * _baseAmount;
             // console.log("tier:", maxFundAmount, amount);
-        } else if (nowHours < WHITELISTED_USER_FUND_TIME) {
+        } else if (block.timestamp < _whitelistedFundTime ) {
             maxFundAmount = _whitelistedAmounts[funder];
             // console.log("whitelisted user:", maxFundAmount, amount);
         } else {

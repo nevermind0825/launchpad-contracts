@@ -4,8 +4,8 @@ import { ethers } from "hardhat";
 import { expect } from "chai";
 import moment from "moment";
 
-import { timeTravel, getTimeStamp } from "./utils/helpers";
-import { ONE_DAY_IN_SECONDS, TIER_FUND_TIME, WHITELISTED_USER_FUND_TIME, FAILURE } from "./utils/constants";
+import { timeTravel, getLatestBlockTimestamp } from "./utils/helpers";
+import { FAILURE } from "./utils/constants";
 import { initIDOFactory } from "./utils/IDO.behavior";
 
 describe("IDO test", async () => {
@@ -36,7 +36,7 @@ describe("IDO test", async () => {
     IDO = ido.attach(idoAddr);
 
     // Init IDO property
-    const contractNow = await getTimeStamp();
+    const contractNow = await getLatestBlockTimestamp();
     momentNow = moment.unix(contractNow); // 2022-09-01
     await IDO.connect(operator).setStartTime(momentNow.add(10, "days").unix()); // 2022-09-11
     await IDO.connect(operator).setEndTime(momentNow.add(9, "days").unix()); // 2022-09-20
@@ -118,10 +118,16 @@ describe("IDO test", async () => {
 
   describe("Fund test", async () => {
     let contractNow: number;
+    let endTime: number;
+    let tierFundTime: number;
+    let whitelistedFundTime: number;
 
     beforeEach(async () => {
-      contractNow = (await getTimeStamp()) % ONE_DAY_IN_SECONDS;
       timeTravel(moment.duration(10, "days").asSeconds());
+      contractNow = await getLatestBlockTimestamp();
+      endTime = await IDO.getEndTime();
+      tierFundTime = await IDO.getTierFundTime();
+      whitelistedFundTime = await IDO.getWhitelistedFundTime();
     });
 
     it("Users can fund a specified amount", async () => {
@@ -129,20 +135,19 @@ describe("IDO test", async () => {
     });
 
     it("Fund tiers", async () => {
-      if (contractNow > TIER_FUND_TIME) timeTravel(ONE_DAY_IN_SECONDS - contractNow);
       await expect(IDO.fund(user1.address, 800)).to.be.revertedWith("IDO: fund amount is too much");
     });
 
     it("Fund whitelisted users", async () => {
-      if (WHITELISTED_USER_FUND_TIME < contractNow || contractNow < TIER_FUND_TIME)
-        timeTravel(ONE_DAY_IN_SECONDS - contractNow + TIER_FUND_TIME);
-      await expect(IDO.fund(user0.address, 100)).to.be.revertedWith("IDO: fund amount is too much");
+      if (contractNow < tierFundTime.valueOf())
+        timeTravel(tierFundTime.valueOf() - contractNow);
+      await expect(IDO.fund(user0.address, 800)).to.be.revertedWith("IDO: fund amount is too much");
     });
 
     it("Fund any users", async () => {
-      if (WHITELISTED_USER_FUND_TIME > contractNow)
-        timeTravel(ONE_DAY_IN_SECONDS - contractNow + WHITELISTED_USER_FUND_TIME);
-      await expect(IDO.fund(user2.address, 150)).to.be.revertedWith("IDO: fund amount is too much");
+      if (contractNow < whitelistedFundTime.valueOf())
+        timeTravel(whitelistedFundTime.valueOf() - contractNow);
+      await expect(IDO.fund(user2.address, 550)).to.be.revertedWith("IDO: fund amount is too much");
     });
 
     it("Fund in case of emergency refund", async () => {
@@ -161,7 +166,7 @@ describe("IDO test", async () => {
 
     describe("Users refund when IDO is failure", async () => {
       beforeEach(async () => {
-        timeTravel(ONE_DAY_IN_SECONDS - contractNow);
+        // timeTravel(endTime - contractNow);
         await IDO.fund(user0.address, 100); // user0 is tier, now is for tier fund time
         timeTravel(moment.duration(10, "days").asSeconds());
         await IDOFactory.finalizeIDO(0, finalizer.address);
@@ -184,19 +189,19 @@ describe("IDO test", async () => {
 
     describe("Users claim when IDO is success", async () => {
       beforeEach(async () => {
-        timeTravel(ONE_DAY_IN_SECONDS - contractNow);
+        // timeTravel(endTime - contractNow);
         // tiers fund
         await IDO.fund(user0.address, 100);
         await IDO.fund(user1.address, 400);
-        timeTravel(TIER_FUND_TIME);
+        timeTravel(tierFundTime.valueOf() - contractNow);
         // whiitlisted users fund
         await IDO.fund(user1.address, 100);
         await IDO.fund(user2.address, 300);
-        timeTravel(WHITELISTED_USER_FUND_TIME - TIER_FUND_TIME);
+        timeTravel(whitelistedFundTime - tierFundTime);
         // any users
         await IDO.fund(user0.address, 50);
         await IDO.fund(user1.address, 50);
-        timeTravel(moment.duration(9, "days").asSeconds());
+        timeTravel(endTime - whitelistedFundTime);
         await IDOFactory.finalizeIDO(0, finalizer.address);
       });
 
