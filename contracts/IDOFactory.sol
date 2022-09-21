@@ -13,15 +13,15 @@ import "./interfaces/ITier.sol";
  * @notice IDOFactoy creates IDOs.
  */
 contract IDOFactory is Ownable {
-    address private _feeRecipient;
-    uint256 private _feePercent;
-
-    IDO[] private _ctrtIDOs;
+    address[] private _ctrtIDOs;
 
     address private _tier;
     address private _point;
 
-    mapping (address => bool) private operators;
+    mapping(address => bool) private operators;
+
+    event CreateIDO(address fundToken, uint256 fundAmount, address saleToken, uint256 saleAmount);
+    event SetOperator(address operator, bool canOperate);
 
     /**
      * @notice Set tier, point address and roles.
@@ -31,6 +31,7 @@ contract IDOFactory is Ownable {
     constructor(address tier, address point) {
         _tier = tier;
         _point = point;
+        operators[owner()] = true;
     }
 
     modifier inIDOs(uint256 index) {
@@ -41,6 +42,32 @@ contract IDOFactory is Ownable {
     modifier onlyOperator() {
         require(operators[msg.sender], "IDOFactory: caller is not operator");
         _;
+    }
+
+    function setTierAddress(address tier) external onlyOwner {
+        _tier = tier;
+    }
+
+    function getTierAddress() external view returns (address) {
+        return _tier;
+    }
+
+    function setPointAddress(address point) external onlyOwner {
+        _point = point;
+    }
+
+    function getPointAddress() external view returns (address) {
+        return _point;
+    }
+
+    /**
+     * @notice IDOFactory owner sets or removes a operator
+     * @param operator: Address of operator
+     * @param canOperate: possible of operator
+     */
+    function setOperator(address operator, bool canOperate) external onlyOwner {
+        operators[operator] = canOperate;
+        emit SetOperator(operator, canOperate);
     }
 
     /**
@@ -56,64 +83,10 @@ contract IDOFactory is Ownable {
         uint256 fundAmount,
         address saleToken,
         uint256 saleAmount
-    ) external onlyOperator() returns (uint256) {
-        require(IERC20(saleToken).balanceOf(owner()) >= saleAmount, "IDOFactroy: balance of owner is not enough");
-        IDO ido = new IDO(fundToken, fundAmount, saleToken, saleAmount);
-        _ctrtIDOs.push(ido);
+    ) external onlyOperator returns (uint256) {
+        _ctrtIDOs.push(address(new IDO(fundToken, fundAmount, saleToken, saleAmount)));
+        emit CreateIDO(fundToken, fundAmount, saleToken, saleAmount);
         return _ctrtIDOs.length - 1;
-    }
-
-    /**
-     * @notice IDOFactory owner sets a fee recipient
-     * @param feeRecipient: Address of fee recipient
-     */
-    function setFeeRecipient(address feeRecipient) external onlyOwner {
-        require(feeRecipient != address(0), "IDOFactory: fee recipient must not be address(0)");
-        _feeRecipient = feeRecipient;
-    }
-
-    /**
-     * @notice IDOFactory owner sets a fee percent
-     * @param feePercent: Fee percent
-     */
-    function setFeePercent(uint256 feePercent) external onlyOwner {
-        require(feePercent > 0, "IDOFactory: fee percent must be bigger than zero");
-        _feePercent = feePercent;
-    }
-
-    /**
-     * @notice IDOFactory owner finalizes a IDO
-     * @param index: Index of the IDO
-     * @param finalizer: Address of finalizer
-     */
-    function finalizeIDO(uint256 index, address finalizer) external onlyOwner inIDOs(index) {
-        require(_feePercent > 0, "IDOFactory: owner didn't set the fee percent");
-        require(_feeRecipient != address(0), "IDOFactory: owner didn't set the fee recipient");
-        _ctrtIDOs[index].finalize(owner(), finalizer, _feePercent, _feeRecipient);
-    }
-
-    /**
-     * @notice IDOFactory owner calls emergencyRefund
-     * @param index: Index of the IDO
-     */
-    function emergencyRefund(uint256 index) external onlyOwner inIDOs(index) {
-        _ctrtIDOs[index].emergencyRefund();
-    }
-
-    /**
-     * @notice IDOFactory owner inserts a operator
-     * @param operator: Address of operator
-     */
-    function insertOperator(address operator) external onlyOwner {
-        operators[operator] = true;
-    }
-
-    /**
-     * @notice IDOFactory owner removes a operator
-     * @param operator: Operator address to remove
-     */
-    function removeOperator(address operator) external onlyOwner {
-        operators[operator] = false;
     }
 
     /**
@@ -121,8 +94,31 @@ contract IDOFactory is Ownable {
      * @param index: Index of the IDO to get
      * @return IDO: Address of the IDO to get
      */
-    function getIDO(uint256 index) external view inIDOs(index) returns (IDO) {
+    function getIDO(uint256 index) external view inIDOs(index) returns (address) {
         return _ctrtIDOs[index];
+    }
+
+    /**
+     * @notice IDOFactory owner finalizes a IDO
+     * @param index: Index of the IDO
+     * @param finalizer: Address of finalizer
+     */
+    function finalizeIDO(
+        uint256 index,
+        address projectOwner,
+        address finalizer,
+        address feeRecipient,
+        uint256 feePercent
+    ) external onlyOwner inIDOs(index) {
+        IDO(_ctrtIDOs[index]).finalize(projectOwner, finalizer, feePercent, feeRecipient);
+    }
+
+    /**
+     * @notice IDOFactory owner calls emergencyRefund
+     * @param index: Index of the IDO
+     */
+    function emergencyRefund(uint256 index) external onlyOwner inIDOs(index) {
+        IDO(_ctrtIDOs[index]).emergencyRefund();
     }
 
     /**
@@ -131,7 +127,10 @@ contract IDOFactory is Ownable {
      * @return multiplier: Return the user's multiplier
      */
     function getMultiplier(address funder) public view returns (uint256) {
-        return ITier(_tier).getMultiplier(_point, funder);
+        uint256 tierIndex;
+        uint256 multiplier;
+        (tierIndex, multiplier) = ITier(_tier).getMultiplier(_point, funder);
+        return multiplier;
     }
 
     /**

@@ -61,7 +61,7 @@ export const initIDOFactory = async (
   user1: SignerWithAddress,
   user2?: SignerWithAddress,
 ): Promise<[Contract, Contract, Contract, Contract, Contract]> => {
-  const [Tier, Point, Play, PlayBUSD] = await initTier(user0, user1, user2 || undefined);
+  const [Tier, Point, Play, PlayBUSD] = await initTier(user0, user1, user2);
 
   // deploy IDOFactory contract
   const idoFactory = await ethers.getContractFactory("IDOFactory");
