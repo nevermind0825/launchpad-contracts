@@ -16,12 +16,12 @@ export const initPoint = async (
 
   // Play contract deploy.
   const play = await ethers.getContractFactory("Play");
-  const Play = await play.deploy(10000); // set initail supply of Play token as 10000.
+  const Play = await play.deploy(20000); // set initail supply of Play token as 10000.
   await Play.deployed();
 
   // PlayBUSD contract deploy
   const playBUSD = await ethers.getContractFactory("PlayBUSD");
-  const PlayBUSD = await playBUSD.deploy(10000); // set initail supply of PlayBUSD token as 10000.
+  const PlayBUSD = await playBUSD.deploy(20000); // set initail supply of PlayBUSD token as 10000.
   await PlayBUSD.deployed();
 
   // Transfer tokens
