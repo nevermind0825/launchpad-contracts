@@ -37,7 +37,7 @@ describe("Point test", () => {
       );
     });
 
-    it("A token can only be inserted once", async () => {
+    it("A token can not be duplicated", async () => {
       await expect(Point.insertToken(Play.address, 8)).to.be.revertedWith("Point: the token is already inserted.");
     });
 
