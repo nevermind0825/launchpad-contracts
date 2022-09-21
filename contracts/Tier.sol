@@ -18,6 +18,7 @@ contract Tier is Ownable {
     }
 
     TierList[] private _tiers;
+    mapping(string => bool) private isTierAdded;
 
     /**
      * @notice By default, 4 tiers are added.
@@ -30,7 +31,18 @@ contract Tier is Ownable {
     }
 
     modifier onlyIndex(uint256 index) {
-        require(_tiers.length > index, "Tier: Invalid index");
+        require(_tiers.length > index, "Tier: invalid index");
+        _;
+    }
+
+    modifier onlyTierInfo(
+        string memory tierName,
+        uint256 minimumPoint,
+        uint256 multiplier
+    ) {
+        require(bytes(tierName).length > 0, "Tier: tier name is invalid");
+        require(minimumPoint > 0, "Tier: minimum point must be greater than zero");
+        require(multiplier > 0, "Tier: multiplier must be greater than zero");
         _;
     }
 
@@ -45,8 +57,12 @@ contract Tier is Ownable {
         string memory tierName,
         uint256 minimumPoint,
         uint256 multiplier
-    ) public onlyOwner returns (uint256) {
+    ) public onlyOwner onlyTierInfo(tierName, minimumPoint, multiplier) returns (uint256) {
+        require(isTierAdded[tierName] == false, "Tier: tier name has already inserted");
+
         _tiers.push(TierList({ tierName: tierName, minimumPoint: minimumPoint, multiplier: multiplier }));
+        isTierAdded[tierName] = true;
+
         return _tiers.length - 1;
     }
 
@@ -55,7 +71,9 @@ contract Tier is Ownable {
      * @param index: Index of the tier to remove
      */
     function removeTier(uint256 index) external onlyOwner onlyIndex(index) {
-        _tiers[index] = _tiers[_tiers.length - 1];
+        TierList storage t = _tiers[index];
+        isTierAdded[t.tierName] = false;
+        t = _tiers[_tiers.length - 1];
         _tiers.pop();
     }
 
@@ -71,8 +89,17 @@ contract Tier is Ownable {
         string memory tierName,
         uint256 minimumPoint,
         uint256 multiplier
-    ) external onlyOwner onlyIndex(index) {
+    ) external onlyOwner onlyIndex(index) onlyTierInfo(tierName, minimumPoint, multiplier) {
         TierList storage t = _tiers[index];
+        require(
+            (isTierAdded[tierName] == false) ||
+            (
+                isTierAdded[tierName] == true &&
+                keccak256(abi.encodePacked(t.tierName)) == keccak256(abi.encodePacked(tierName))
+            ),
+            "Tier: tier name is invalid"
+        );
+        isTierAdded[tierName] = true;
         t.tierName = tierName;
         t.minimumPoint = minimumPoint;
         t.multiplier = multiplier;
@@ -103,17 +130,19 @@ contract Tier is Ownable {
      * @param user: Address of user's account
      * @return multiplier: Return multiplier of user
      */
-    function getMultiplier(address point, address user) external view returns (uint256) {
+    function getMultiplier(address point, address user) external view returns (uint256, uint256) {
+        require(point != address(0), "Tier: point address is invalid");
+        require(user != address(0), "Tier: user account is invalid");
         uint256 userPoint = IPoint(point).getPoint(user);
-        int256 i = 0;
         uint256 multiplier = 0;
-        for (i = (int256)(_tiers.length - 1); i >= 0; i--) {
-            TierList storage t = _tiers[uint256(i)];
-            if (t.minimumPoint <= userPoint) {
+        uint256 index = 0;
+        for (uint256 i = 0; i < _tiers.length; i++) {
+            TierList storage t = _tiers[i];
+            if (t.minimumPoint <= userPoint && multiplier <= t.multiplier) {
                 multiplier = t.multiplier;
-                break;
+                index = i;
             }
         }
-        return multiplier;
+        return (index, multiplier);
     }
 }

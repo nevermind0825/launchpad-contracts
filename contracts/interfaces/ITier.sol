@@ -2,5 +2,5 @@
 pragma solidity ^0.8.0;
 
 interface ITier {
-    function getMultiplier(address point, address user) external view returns (uint256);
+    function getMultiplier(address point, address user) external view returns (uint256, uint256);
 }
