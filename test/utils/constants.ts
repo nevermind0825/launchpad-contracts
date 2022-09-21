@@ -1,3 +1,7 @@
+// token weight for Point contract.
+export const PLAY_WEIGHT = 8;
+export const PLAYBUSD_WEIGHT = 15;
+
 // Time constants
 export const ONE_DAY_IN_SECONDS = 60 * 60 * 24;
 export const ONE_HOUR_IN_SECONDS = 60 * 60;

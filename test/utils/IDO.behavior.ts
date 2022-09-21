@@ -2,6 +2,8 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { ethers } from "hardhat";
 import { Contract } from "ethers";
 
+import { PLAY_WEIGHT, PLAYBUSD_WEIGHT } from './constants';
+
 export const initPoint = async (
   user0: SignerWithAddress,
   user1: SignerWithAddress,
@@ -9,7 +11,7 @@ export const initPoint = async (
 ): Promise<[Contract, Contract, Contract]> => {
   // Point contract deploy.
   const point = await ethers.getContractFactory("Point");
-  const Point = await point.deploy(1); // set decimal as 1.
+  const Point = await point.deploy(); // set decimal as 1.
   await Point.deployed();
 
   // Play contract deploy.
@@ -23,18 +25,18 @@ export const initPoint = async (
   await PlayBUSD.deployed();
 
   // Transfer tokens
-  await Play.transfer(user0.address, 1000);
+  await Play.transfer(user0.address, 200);
   await Play.transfer(user1.address, 1000);
   user2 && (await Play.transfer(user2.address, 1000));
-  await PlayBUSD.transfer(user0.address, 500);
-  await PlayBUSD.transfer(user1.address, 300);
+  await PlayBUSD.transfer(user0.address, 50);
+  await PlayBUSD.transfer(user1.address, 30);
 
   return [Point, Play, PlayBUSD];
 };
 
 export const insertTokenForPoint = async (Point: Contract, Play: Contract, PlayBUSD: Contract): Promise<void> => {
-  await Point.insertToken(Play.address, 8);
-  await Point.insertToken(PlayBUSD.address, 15);
+  await Point.insertToken(Play.address, PLAY_WEIGHT);
+  await Point.insertToken(PlayBUSD.address, PLAYBUSD_WEIGHT);
 };
 
 export const initTier = async (
@@ -67,7 +69,7 @@ export const initIDOFactory = async (
   await IDOFactory.deployed();
 
   // Insert operator
-  await IDOFactory.insertOperator(operator.address);
+  await IDOFactory.setOperator(operator.address, true);
 
   return [IDOFactory, Tier, Point, Play, PlayBUSD];
 };
