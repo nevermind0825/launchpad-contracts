@@ -1,58 +1,66 @@
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { ethers } from "hardhat";
-import { Contract } from "ethers";
 
-import { PLAY_WEIGHT, PLAYBUSD_WEIGHT } from './constants';
+import { PLAY_WEIGHT, PLAYBUSD_WEIGHT } from "./constants";
+import {
+  Play,
+  Play__factory,
+  PlayBUSD,
+  PlayBUSD__factory,
+  Point,
+  Point__factory,
+  Tier,
+  Tier__factory,
+  IDOFactory,
+  IDOFactory__factory,
+  BUSD,
+  BUSD__factory,
+  SEG,
+  SEG__factory,
+} from "../../typechain";
 
 export const initPoint = async (
   user0: SignerWithAddress,
   user1: SignerWithAddress,
   user2?: SignerWithAddress,
-): Promise<[Contract, Contract, Contract]> => {
-  // Point contract deploy.
-  const point = await ethers.getContractFactory("Point");
-  const Point = await point.deploy(); // set decimal as 1.
-  await Point.deployed();
+): Promise<[Point, Play, PlayBUSD]> => {
+  /* Point contract deploy. */
+  const pointFactory: Point__factory = await ethers.getContractFactory("Point");
+  const point = <Point>await pointFactory.deploy();
 
-  // Play contract deploy.
-  const play = await ethers.getContractFactory("Play");
-  const Play = await play.deploy(20000); // set initail supply of Play token as 10000.
-  await Play.deployed();
+  /* Deploy contracts for user's point. */
+  const playFactory: Play__factory = await ethers.getContractFactory("Play");
+  const play = <Play>await playFactory.deploy(20000); // set initail supply of Play token as 20000.
 
-  // PlayBUSD contract deploy
-  const playBUSD = await ethers.getContractFactory("PlayBUSD");
-  const PlayBUSD = await playBUSD.deploy(20000); // set initail supply of PlayBUSD token as 10000.
-  await PlayBUSD.deployed();
+  const playBUSDFactory: PlayBUSD__factory = await ethers.getContractFactory("PlayBUSD");
+  const playBUSD = <PlayBUSD>await playBUSDFactory.deploy(20000); // set initail supply of PlayBUSD token as 20000.
 
-  // Transfer tokens
-  await Play.transfer(user0.address, 200);
-  await Play.transfer(user1.address, 1000);
-  user2 && (await Play.transfer(user2.address, 1000));
-  await PlayBUSD.transfer(user0.address, 50);
-  await PlayBUSD.transfer(user1.address, 30);
+  /* Insert tokens for user's point */
+  await point.insertToken(play.address, PLAY_WEIGHT);
+  await point.insertToken(playBUSD.address, PLAYBUSD_WEIGHT);
 
-  return [Point, Play, PlayBUSD];
-};
+  /* Transfer tokens for user's point */
+  await play.transfer(user0.address, 200);
+  await play.transfer(user1.address, 100);
+  user2 && (await play.transfer(user2.address, 100));
+  await playBUSD.transfer(user0.address, 50);
+  await playBUSD.transfer(user1.address, 30);
 
-export const insertTokenForPoint = async (Point: Contract, Play: Contract, PlayBUSD: Contract): Promise<void> => {
-  await Point.insertToken(Play.address, PLAY_WEIGHT);
-  await Point.insertToken(PlayBUSD.address, PLAYBUSD_WEIGHT);
+  return [point, play, playBUSD];
 };
 
 export const initTier = async (
   user0: SignerWithAddress,
   user1: SignerWithAddress,
   user2?: SignerWithAddress,
-): Promise<[Contract, Contract, Contract, Contract]> => {
-  const [Point, Play, PlayBUSD] = await initPoint(user0, user1, user2);
-  await insertTokenForPoint(Point, Play, PlayBUSD);
+): Promise<[Tier, Point]> => {
+  const [point] = await initPoint(user0, user1, user2);
 
   // Deploy tier contract.
-  const tier = await ethers.getContractFactory("Tier");
-  const Tier = await tier.deploy();
-  await Tier.deployed();
+  const tierFactory: Tier__factory = await ethers.getContractFactory("Tier");
+  const tier = <Tier>await tierFactory.deploy();
 
-  return [Tier, Point, Play, PlayBUSD];
+  return [tier, point];
 };
 
 export const initIDOFactory = async (
@@ -60,16 +68,27 @@ export const initIDOFactory = async (
   user0: SignerWithAddress,
   user1: SignerWithAddress,
   user2?: SignerWithAddress,
-): Promise<[Contract, Contract, Contract, Contract, Contract]> => {
-  const [Tier, Point, Play, PlayBUSD] = await initTier(user0, user1, user2);
+): Promise<[IDOFactory, Tier, Point, BUSD, SEG]> => {
+  const [tier, point] = await initTier(user0, user1, user2);
 
-  // deploy IDOFactory contract
-  const idoFactory = await ethers.getContractFactory("IDOFactory");
-  const IDOFactory = await idoFactory.deploy(Tier.address, Point.address);
-  await IDOFactory.deployed();
+  /* Deploy IDOFactory contract */
+  const idoFactoryFactory: IDOFactory__factory = await ethers.getContractFactory("IDOFactory");
+  const idoFactory = <IDOFactory>await idoFactoryFactory.deploy(tier.address, point.address);
 
-  // Insert operator
-  await IDOFactory.setOperator(operator.address, true);
+  /* Deploy tokens for IDO exchange */
+  const busdFactory: BUSD__factory = await ethers.getContractFactory("BUSD");
+  const busd = <BUSD>await busdFactory.deploy(100000);
 
-  return [IDOFactory, Tier, Point, Play, PlayBUSD];
+  const segFactory: SEG__factory = await ethers.getContractFactory("SEG");
+  const seg = <BUSD>await segFactory.deploy(100000);
+
+  /* Transer tokens for IDO exchange */
+  await busd.transfer(user0.address, 1000);
+  await busd.transfer(user1.address, 1000);
+  user2 && (await busd.transfer(user2.address, 1000));
+
+  /* Insert operator */
+  await idoFactory.setOperator(operator.address, true);
+
+  return [idoFactory, tier, point, busd, seg];
 };

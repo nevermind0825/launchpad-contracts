@@ -73,7 +73,7 @@ contract Tier is Ownable {
     function removeTier(uint256 index) external onlyOwner onlyIndex(index) {
         TierList storage t = _tiers[index];
         isTierAdded[t.tierName] = false;
-        t = _tiers[_tiers.length - 1];
+        if (index < _tiers.length - 1) t = _tiers[_tiers.length - 1];
         _tiers.pop();
     }
 
@@ -93,10 +93,8 @@ contract Tier is Ownable {
         TierList storage t = _tiers[index];
         require(
             (isTierAdded[tierName] == false) ||
-            (
-                isTierAdded[tierName] == true &&
-                keccak256(abi.encodePacked(t.tierName)) == keccak256(abi.encodePacked(tierName))
-            ),
+                (isTierAdded[tierName] == true &&
+                    keccak256(abi.encodePacked(t.tierName)) == keccak256(abi.encodePacked(tierName))),
             "Tier: tier name is invalid"
         );
         isTierAdded[tierName] = true;
@@ -110,34 +108,22 @@ contract Tier is Ownable {
      * @param index: Index of tier to get
      * @return tierInfo: Return the tier info (name, minimum point, multiplier)
      */
-    function getTier(uint256 index)
-        external
-        view
-        onlyIndex(index)
-        returns (
-            string memory,
-            uint256,
-            uint256
-        )
-    {
-        TierList storage t = _tiers[index];
-        return (t.tierName, t.minimumPoint, t.multiplier);
+    function getTier(uint256 index) external view onlyIndex(index) returns (TierList memory) {
+        return _tiers[index];
     }
 
     /**
      * @notice Get multiplier of user
      * @param point: Address of point contract
      * @param user: Address of user's account
-     * @return multiplier: Return multiplier of user
+     * @return index multiplier
      */
-    function getMultiplier(address point, address user) external view returns (uint256, uint256) {
+    function getMultiplier(address point, address user) external view returns (uint256 index, uint256 multiplier) {
         require(point != address(0), "Tier: point address is invalid");
         require(user != address(0), "Tier: user account is invalid");
         uint256 userPoint = IPoint(point).getPoint(user);
-        uint256 multiplier = 0;
-        uint256 index = 0;
         for (uint256 i = 0; i < _tiers.length; i++) {
-            TierList storage t = _tiers[i];
+            TierList memory t = _tiers[i];
             if (t.minimumPoint <= userPoint && multiplier <= t.multiplier) {
                 multiplier = t.multiplier;
                 index = i;

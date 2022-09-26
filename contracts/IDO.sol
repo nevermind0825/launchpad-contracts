@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-// import "hardhat/console.sol";
+import "hardhat/console.sol";
 
 import "./IDOFactory.sol";
 
@@ -19,6 +19,12 @@ contract IDO is Ownable {
         Waiting,
         Success,
         Failure
+    }
+
+    enum UserRole {
+        Tier,
+        WhitelistedUser,
+        FSFC
     }
 
     uint256 public constant HUNDRED_PERCENT = 100;
@@ -44,16 +50,19 @@ contract IDO is Ownable {
 
     mapping(address => uint256) private _whitelistedAmounts;
     mapping(address => uint256) private _fundedAmounts;
+    mapping(address => mapping(UserRole => uint256)) private _roleFundedAmounts;
     mapping(address => uint256) private _claimedAmounts;
 
     uint256 private _fundedAmount;
     uint256 private _tierFundTime;
     uint256 private _whitelistedFundTime;
 
+    address private _factory;
+
     State private _state = State.Waiting;
 
     // events
-    event Fund(string userRole, address funder, uint256 amount);
+    event Fund(UserRole userRole, address funder, uint256 amount);
     event Claim(address claimer, uint256 amount);
     event ReFund(address refunder, uint256 amount);
     event Finalize(State state);
@@ -77,6 +86,8 @@ contract IDO is Ownable {
         _idoProperty.fundAmount = fundAmount;
         _idoProperty.saleToken = saleToken;
         _idoProperty.saleAmount = saleAmount;
+        _factory = owner();
+        transferOwnership(IDOFactory(_factory).owner());
     }
 
     modifier onlyInTime(uint256 from, uint256 to) {
@@ -90,13 +101,13 @@ contract IDO is Ownable {
         _;
     }
 
-    modifier onlyFunder(address funder) {
-        require(_fundedAmounts[funder] > 0, "IDO: user didn't fund");
+    modifier onlyFunder() {
+        require(_fundedAmounts[msg.sender] > 0, "IDO: there is no token for you");
         _;
     }
 
     modifier onlyOperator() {
-        require(IDOFactory(owner()).isOperator(msg.sender) == true, "IDO: caller is not operator");
+        require(IDOFactory(_factory).isOperator(msg.sender) == true, "IDO: caller is not operator");
         _;
     }
 
@@ -105,8 +116,9 @@ contract IDO is Ownable {
      * @param startTime: timestamp that the sale will start
      */
     function setStartTime(uint256 startTime) external onlyOperator onlyBefore(_idoProperty.startTime) {
-        require(startTime > block.timestamp, "IDO: start time is greater than now");
+        require(startTime > block.timestamp, "IDO: start time must be greater than now");
         _idoProperty.startTime = startTime;
+        setFundRoundTimes();
     }
 
     /**
@@ -116,9 +128,7 @@ contract IDO is Ownable {
     function setEndTime(uint256 endTime) external onlyOperator onlyBefore(_idoProperty.endTime) {
         require(_idoProperty.startTime <= endTime, "IDO: end time must be greater than start time");
         _idoProperty.endTime = endTime;
-        uint256 fundDuration = (_idoProperty.endTime - _idoProperty.startTime) / 3;
-        _tierFundTime = fundDuration + _idoProperty.startTime;
-        _whitelistedFundTime = fundDuration * 2 + _idoProperty.startTime;
+        setFundRoundTimes();
     }
 
     /**
@@ -238,7 +248,7 @@ contract IDO is Ownable {
     }
 
     /**
-     * @notice IDOFacotory owner finalizes the IDO
+     * @notice IDOFactory owner finalizes the IDO
      * @param projectOwner: Address of the IDOFactory owner
      * @param finalizer: Address of user account sending the fund token
      * @param feePercent: "feePercent" of "totalFunded" will be sent to "feeRecipient" address
@@ -247,8 +257,8 @@ contract IDO is Ownable {
     function finalize(
         address projectOwner,
         address finalizer,
-        uint256 feePercent,
-        address feeRecipient
+        address feeRecipient,
+        uint256 feePercent
     ) external onlyOwner {
         require(feePercent <= HUNDRED_PERCENT, "IDO: fee percent must be smaller than 100");
         require(_state == State.Waiting, "IDO: IDO has already ended");
@@ -280,21 +290,22 @@ contract IDO is Ownable {
 
     /**
      * @notice Users fund
-     * @param funder: Funder address
      * @param amount: Fund token amount
      */
-    function fund(address funder, uint256 amount) external onlyInTime(_idoProperty.startTime, _idoProperty.endTime) {
+    function fund(uint256 amount) external onlyInTime(_idoProperty.startTime, _idoProperty.endTime) {
         require(_fundedAmount + amount <= _idoProperty.fundAmount, "IDO: fund amount is greater than the rest");
         require(_state == State.Waiting, "IDO: funder can't fund");
-        uint256 multiplier = IDOFactory(owner()).getMultiplier(funder);
-        (uint256 maxFundAmount, string memory userRole) = block.timestamp < _tierFundTime
-            ? (multiplier * _idoProperty.baseAmount, "tier")
+        address funder = msg.sender;
+        uint256 multiplier = IDOFactory(_factory).getMultiplier(funder);
+        (uint256 maxFundAmount, UserRole userRole) = block.timestamp < _tierFundTime
+            ? (multiplier * _idoProperty.baseAmount, UserRole.Tier)
             : (block.timestamp < _whitelistedFundTime)
-            ? (_whitelistedAmounts[funder], "whitelisted user")
-            : (_idoProperty.maxAmountPerUser, "FCFS");
-        require(maxFundAmount >= amount, "IDO: fund amount is too much");
+            ? (_whitelistedAmounts[funder], UserRole.WhitelistedUser)
+            : (_idoProperty.maxAmountPerUser, UserRole.FSFC);
+        require(maxFundAmount >= amount + _roleFundedAmounts[funder][userRole], "IDO: fund amount is too much");
         _fundedAmount += amount;
         _fundedAmounts[funder] += amount;
+        _roleFundedAmounts[funder][userRole] += amount;
 
         IERC20(_idoProperty.fundToken).transferFrom(funder, address(this), amount);
 
@@ -303,22 +314,23 @@ contract IDO is Ownable {
 
     /**
      * @notice Users claim
-     * @param claimer: Claimer address
      */
-    function claim(address claimer) external onlyFunder(claimer) {
+    function claim() external onlyFunder {
         require(block.timestamp > _idoProperty.claimTime, "IDO: claim time is not yet");
         require(_state == State.Success, "IDO: state is not success");
+        address claimer = msg.sender;
+        uint256 maxSaleAmount = (_fundedAmounts[claimer] * _idoProperty.saleAmount) / _idoProperty.fundAmount;
         uint256 cnt = _idoProperty.duration / _idoProperty.periodicity;
-        uint256 passTime = block.timestamp < _idoProperty.cliffTime
+        uint256 pass = block.timestamp < _idoProperty.cliffTime
             ? 0
             : block.timestamp > _idoProperty.cliffTime + _idoProperty.duration
             ? _idoProperty.duration
             : block.timestamp - _idoProperty.cliffTime;
-        uint256 maxSaleAmount = (_fundedAmounts[claimer] * _idoProperty.saleAmount) / _idoProperty.fundAmount;
-        uint256 percent = _idoProperty.tge +
-            ((HUNDRED_PERCENT - _idoProperty.tge) / cnt) *
-            (passTime / _idoProperty.periodicity);
-        uint256 amount = (maxSaleAmount * percent) / HUNDRED_PERCENT - _claimedAmounts[claimer];
+        pass = pass / _idoProperty.periodicity;
+        uint256 afterCliffPercent = ((HUNDRED_PERCENT - _idoProperty.tge) / cnt) * pass;
+        uint256 totalPercent = _idoProperty.tge + afterCliffPercent;
+        uint256 amount = (maxSaleAmount * totalPercent) / HUNDRED_PERCENT - _claimedAmounts[claimer];
+        require(amount > 0, "IDO: there is no token for you to claim this time.");
         _claimedAmounts[claimer] += amount;
         IERC20(_idoProperty.saleToken).transfer(claimer, amount);
 
@@ -327,10 +339,10 @@ contract IDO is Ownable {
 
     /**
      * @notice Users refund the funded token
-     * @param refunder: Refunder address
      */
-    function refund(address refunder) external onlyFunder(refunder) {
+    function refund() external onlyFunder {
         require(_state == State.Failure, "IDO: state is not failure");
+        address refunder = msg.sender;
         uint256 amount = _fundedAmounts[refunder];
         _fundedAmounts[refunder] = 0;
         IERC20(_idoProperty.fundToken).transfer(refunder, amount);
@@ -343,5 +355,17 @@ contract IDO is Ownable {
      */
     function emergencyRefund() external onlyOwner onlyBefore(_idoProperty.endTime) {
         _state = State.Failure;
+    }
+
+    /**
+     * @dev Set round times that user can fund.
+     * These times should be updated when start and end time is updated.
+     */
+    function setFundRoundTimes() internal {
+        if (_idoProperty.endTime > _idoProperty.startTime) {
+            uint256 fundDuration = (_idoProperty.endTime - _idoProperty.startTime) / 3;
+            _tierFundTime = fundDuration + _idoProperty.startTime;
+            _whitelistedFundTime = fundDuration * 2 + _idoProperty.startTime;
+        }
     }
 }

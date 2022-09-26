@@ -20,7 +20,7 @@ contract IDOFactory is Ownable {
 
     mapping(address => bool) private operators;
 
-    event CreateIDO(address fundToken, uint256 fundAmount, address saleToken, uint256 saleAmount);
+    event CreateIDO(address fundToken, uint256 fundAmount, address saleToken, uint256 saleAmount, address idoAddress);
     event SetOperator(address operator, bool canOperate);
 
     /**
@@ -76,17 +76,17 @@ contract IDOFactory is Ownable {
      * @param fundAmount: Amount of fund token
      * @param saleToken: Address of sale token
      * @param saleAmount: Amount of sale token
-     * @return index: Index of the created IDO
+     * @return index
      */
     function createIDO(
         address fundToken,
         uint256 fundAmount,
         address saleToken,
         uint256 saleAmount
-    ) external onlyOperator returns (uint256) {
+    ) external onlyOperator returns (uint256 index) {
         _ctrtIDOs.push(address(new IDO(fundToken, fundAmount, saleToken, saleAmount)));
-        emit CreateIDO(fundToken, fundAmount, saleToken, saleAmount);
-        return _ctrtIDOs.length - 1;
+        index = _ctrtIDOs.length - 1;
+        emit CreateIDO(fundToken, fundAmount, saleToken, saleAmount, _ctrtIDOs[index]);
     }
 
     /**
@@ -99,38 +99,12 @@ contract IDOFactory is Ownable {
     }
 
     /**
-     * @notice IDOFactory owner finalizes a IDO
-     * @param index: Index of the IDO
-     * @param finalizer: Address of finalizer
-     */
-    function finalizeIDO(
-        uint256 index,
-        address projectOwner,
-        address finalizer,
-        address feeRecipient,
-        uint256 feePercent
-    ) external onlyOwner inIDOs(index) {
-        IDO(_ctrtIDOs[index]).finalize(projectOwner, finalizer, feePercent, feeRecipient);
-    }
-
-    /**
-     * @notice IDOFactory owner calls emergencyRefund
-     * @param index: Index of the IDO
-     */
-    function emergencyRefund(uint256 index) external onlyOwner inIDOs(index) {
-        IDO(_ctrtIDOs[index]).emergencyRefund();
-    }
-
-    /**
      * @notice Get user's multiplier
      * @param funder: Address of funder
-     * @return multiplier: Return the user's multiplier
+     * @return multiplier
      */
-    function getMultiplier(address funder) public view returns (uint256) {
-        uint256 tierIndex;
-        uint256 multiplier;
-        (tierIndex, multiplier) = ITier(_tier).getMultiplier(_point, funder);
-        return multiplier;
+    function getMultiplier(address funder) public view returns (uint256 multiplier) {
+        (, multiplier) = ITier(_tier).getMultiplier(_point, funder);
     }
 
     /**

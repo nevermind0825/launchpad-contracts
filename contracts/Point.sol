@@ -61,7 +61,8 @@ contract Point is Ownable {
     function removeToken(uint256 index) external onlyOwner onlyIndex(index) {
         TokenInfo storage t = _tokenInfos[index];
         isTokenAdded[t.token] = false;
-        t = _tokenInfos[_tokenInfos.length - 1];
+        if (index < _tokenInfos.length - 1)
+            t = _tokenInfos[_tokenInfos.length - 1];
         _tokenInfos.pop();
     }
 
@@ -70,9 +71,8 @@ contract Point is Ownable {
      * @param index: Index of a token to get
      * @return tokenInfo: Return the token info (token address, token weight)
      */
-    function getToken(uint256 index) external view onlyIndex(index) returns (address, uint256) {
-        TokenInfo storage t = _tokenInfos[index];
-        return (t.token, t.weight);
+    function getToken(uint256 index) external view onlyIndex(index) returns (TokenInfo memory) {
+        return _tokenInfos[index];
     }
 
     /**
@@ -85,7 +85,7 @@ contract Point is Ownable {
         uint256 totalPoint = 0;
         uint256 tokenInfosLength = _tokenInfos.length;
         for (uint256 i = 0; i < tokenInfosLength; i++) {
-            TokenInfo storage t = _tokenInfos[i];
+            TokenInfo memory t = _tokenInfos[i];
             totalPoint += IERC20(t.token).balanceOf(account) * t.weight;
         }
 

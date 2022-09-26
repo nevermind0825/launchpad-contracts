@@ -12,6 +12,15 @@ export const WHITELISTED_USER_FUND_TIME = 60 * 60 * 16;
 export const ANY_USER_FUND_TIME = 60 * 60 * 24;
 
 // IDD state
-export const WAITING = 0;
-export const SUCCESS = 1;
-export const FAILURE = 2;
+export enum State {
+  WAITING,
+  SUCCESS,
+  FAILURE
+}
+
+export enum UserRole {
+  Tier,
+  WhitelistedUser,
+  FCFS
+}
+
