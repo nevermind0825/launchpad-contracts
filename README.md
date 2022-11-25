@@ -30,7 +30,7 @@ When launching new tokens, they usually:
   | SuperStar | 1500          | 15         |
   | MegaStar  | 2500          | 25         |
 
-  `Point of User = User's `PLAY`balance _ 0.8 + User's`PLAY-BUSD` balance _ 1.5`
+  `Point of User = User's PLAY balance * 0.8 + User's PLAY-BUSD balance * 1.5`
 
   _The above formula can be changed._
 
@@ -78,9 +78,9 @@ When launching new tokens, they usually:
 
 IDO starts at `StartTime` and ends at `EndTime`.
 Total duration (endTime – startTime) is divided into 3 rounds with the same duration: tier round, whitelist round and fcfs round.
-Tier round: only tiers can fund
-Whitelist round: only whitelisted investors can fund
-FCFS round: any users can fund
+- Tier round: only tiers can fund
+- Whitelist round: only whitelisted investors can fund
+- FCFS round: any users can fund
 
 `Investors' saleToken amount = investor's funded amount * saleToken amount / fundToken amount`
 

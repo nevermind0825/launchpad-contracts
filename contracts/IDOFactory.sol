@@ -20,8 +20,8 @@ contract IDOFactory is Ownable {
 
     mapping(address => bool) private operators;
 
-    event CreateIDO(address fundToken, uint256 fundAmount, address saleToken, uint256 saleAmount, address idoAddress);
-    event SetOperator(address operator, bool canOperate);
+    event CreateIDO(address indexed idoAddress, uint256 index);
+    event SetOperator(address indexed operator, bool canOperate);
 
     /**
      * @notice Set tier, point address and roles.
@@ -72,21 +72,11 @@ contract IDOFactory is Ownable {
 
     /**
      * @notice IDOFactory owner creates a new IDO
-     * @param fundToken: Address of fund token
-     * @param fundAmount: Amount of fund token
-     * @param saleToken: Address of sale token
-     * @param saleAmount: Amount of sale token
-     * @return index
      */
-    function createIDO(
-        address fundToken,
-        uint256 fundAmount,
-        address saleToken,
-        uint256 saleAmount
-    ) external onlyOperator returns (uint256 index) {
-        _ctrtIDOs.push(address(new IDO(fundToken, fundAmount, saleToken, saleAmount)));
-        index = _ctrtIDOs.length - 1;
-        emit CreateIDO(fundToken, fundAmount, saleToken, saleAmount, _ctrtIDOs[index]);
+    function createIDO(IDO.IDOProperty memory idoProperty) external onlyOperator {
+        _ctrtIDOs.push(address(new IDO(idoProperty)));
+        uint256 index = _ctrtIDOs.length - 1;
+        emit CreateIDO(_ctrtIDOs[index], index);
     }
 
     /**

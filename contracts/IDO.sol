@@ -67,29 +67,6 @@ contract IDO is Ownable {
     event ReFund(address refunder, uint256 amount);
     event Finalize(State state);
 
-    /**
-     * @notice IDOFacotry owner creates IDO contract
-     * @param fundToken: Address of fund token
-     * @param fundAmount: Amount of fund token
-     * @param saleToken: Address of sale token
-     * @param saleAmount: Amount of sale token
-     */
-    constructor(
-        address fundToken,
-        uint256 fundAmount,
-        address saleToken,
-        uint256 saleAmount
-    ) {
-        require(fundToken != address(0) && saleToken != address(0), "IDO: token address is invalid");
-        require(fundAmount > 0 && saleAmount > 0, "IDO: token amount is greater than zero");
-        _idoProperty.fundToken = fundToken;
-        _idoProperty.fundAmount = fundAmount;
-        _idoProperty.saleToken = saleToken;
-        _idoProperty.saleAmount = saleAmount;
-        _factory = owner();
-        transferOwnership(IDOFactory(_factory).owner());
-    }
-
     modifier onlyInTime(uint256 from, uint256 to) {
         require(block.timestamp >= from, "IDO: time is not yet");
         require(block.timestamp < to, "IDO: time has already passed");
@@ -109,6 +86,44 @@ contract IDO is Ownable {
     modifier onlyOperator() {
         require(IDOFactory(_factory).isOperator(msg.sender) == true, "IDO: caller is not operator");
         _;
+    }
+
+    /**
+     * @notice IDOFacotry owner creates IDO contract
+     */
+    constructor(IDOProperty memory idoProperty) {
+        require(
+            idoProperty.fundToken != address(0) && idoProperty.saleToken != address(0),
+            "IDO: token address is invalid"
+        );
+        require(idoProperty.fundAmount > 0 && idoProperty.saleAmount > 0, "IDO: token amount is greater than zero");
+        require(idoProperty.startTime > block.timestamp, "IDO: start time must be greater than now");
+        require(idoProperty.startTime <= idoProperty.endTime, "IDO: end time must be greater than start time");
+        require(idoProperty.endTime < idoProperty.claimTime, "IDO: claim time must be greater than end time");
+        require(idoProperty.claimTime < idoProperty.cliffTime, "IDO: cliff time must be greater than claim time");
+        require(idoProperty.tge <= HUNDRED_PERCENT, "IDO: tge must be smaller than 100");
+        require(idoProperty.duration > 0, "IDO: duration must be greater than zero");
+        require(idoProperty.duration % idoProperty.periodicity == 0, "IDO: duration must be a multiple of periodicity");
+        _idoProperty = idoProperty;
+        _factory = owner();
+        transferOwnership(IDOFactory(_factory).owner());
+    }
+
+    /**
+     * @notice Operator sets the sale info
+     */
+    function setSaleInfo(
+        address fundToken,
+        uint256 fundAmount,
+        address saleToken,
+        uint256 saleAmount
+    ) external onlyOperator onlyBefore(_idoProperty.startTime) {
+        require(fundToken != address(0) && saleToken != address(0), "IDO: token address is invalid");
+        require(fundAmount > 0 && saleAmount > 0, "IDO: token amount is greater than zero");
+        _idoProperty.fundToken = fundToken;
+        _idoProperty.fundAmount = fundAmount;
+        _idoProperty.saleToken = saleToken;
+        _idoProperty.saleAmount = saleAmount;
     }
 
     /**
