@@ -25,6 +25,7 @@ if (!process.env.PRIVATEKEY) {
 }
 
 const chainIds = {
+  localhost: 1337,
   hardhat: 31337,
   bsc: 56,
   bsct: 97,
@@ -32,7 +33,27 @@ const chainIds = {
 };
 
 const config: HardhatUserConfig = {
-  solidity: "0.8.9",
+  contractSizer: {
+    alphaSort: true,
+    runOnCompile: true,
+    disambiguatePaths: false,
+  },
+  solidity: {
+    version: "0.8.9",
+    settings: {
+      metadata: {
+        // Not including the metadata hash
+        // https://github.com/paulrberg/solidity-template/issues/31
+        bytecodeHash: "none",
+      },
+      // You should disable the optimizer when debugging
+      // https://hardhat.org/hardhat-network/#solidity-optimizer-support
+      optimizer: {
+        enabled: true,
+        runs: 800,
+      },
+    },
+  },
   etherscan: {
     // apiKey: process.env.ETHERSCAN,
     apiKey: process.env.BSCSCAN,

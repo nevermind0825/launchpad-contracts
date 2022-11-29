@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "hardhat/console.sol";
+// import "hardhat/console.sol";
 
 import "./IDOFactory.sol";
 
@@ -96,7 +96,7 @@ contract IDO is Ownable {
             idoProperty.fundToken != address(0) && idoProperty.saleToken != address(0),
             "IDO: token address is invalid"
         );
-        require(idoProperty.fundAmount > 0 && idoProperty.saleAmount > 0, "IDO: token amount is greater than zero");
+        require(idoProperty.fundAmount > 0 && idoProperty.saleAmount > 0, "IDO: token amount is zero");
         require(idoProperty.startTime > block.timestamp, "IDO: start time must be greater than now");
         require(idoProperty.startTime <= idoProperty.endTime, "IDO: end time must be greater than start time");
         require(idoProperty.endTime < idoProperty.claimTime, "IDO: claim time must be greater than end time");
@@ -105,8 +105,36 @@ contract IDO is Ownable {
         require(idoProperty.duration > 0, "IDO: duration must be greater than zero");
         require(idoProperty.duration % idoProperty.periodicity == 0, "IDO: duration must be a multiple of periodicity");
         _idoProperty = idoProperty;
+        setFundRoundTimes();
         _factory = owner();
         transferOwnership(IDOFactory(_factory).owner());
+    }
+
+    /**
+     * @notice Get the property of IDO
+     */
+    function getIDOProperty() external view returns (IDOProperty memory) {
+        return _idoProperty;
+    }
+
+    /**
+     * @notice Set the propety of IDO
+     */
+    function setIDOProperty(IDOProperty memory idoProperty) external onlyOperator onlyBefore(_idoProperty.startTime) {
+        require(
+            idoProperty.fundToken != address(0) && idoProperty.saleToken != address(0),
+            "IDO: token address is invalid"
+        );
+        require(idoProperty.fundAmount > 0 && idoProperty.saleAmount > 0, "IDO: token amount is zero");
+        require(idoProperty.startTime > block.timestamp, "IDO: start time must be greater than now");
+        require(idoProperty.startTime <= idoProperty.endTime, "IDO: end time must be greater than start time");
+        require(idoProperty.endTime < idoProperty.claimTime, "IDO: claim time must be greater than end time");
+        require(idoProperty.claimTime < idoProperty.cliffTime, "IDO: cliff time must be greater than claim time");
+        require(idoProperty.tge <= HUNDRED_PERCENT, "IDO: tge must be smaller than 100");
+        require(idoProperty.duration > 0, "IDO: duration must be greater than zero");
+        require(idoProperty.duration % idoProperty.periodicity == 0, "IDO: duration must be a multiple of periodicity");
+        _idoProperty = idoProperty;
+        setFundRoundTimes();
     }
 
     /**
@@ -119,7 +147,7 @@ contract IDO is Ownable {
         uint256 saleAmount
     ) external onlyOperator onlyBefore(_idoProperty.startTime) {
         require(fundToken != address(0) && saleToken != address(0), "IDO: token address is invalid");
-        require(fundAmount > 0 && saleAmount > 0, "IDO: token amount is greater than zero");
+        require(fundAmount > 0 && saleAmount > 0, "IDO: token amount is zero");
         _idoProperty.fundToken = fundToken;
         _idoProperty.fundAmount = fundAmount;
         _idoProperty.saleToken = saleToken;
@@ -146,13 +174,13 @@ contract IDO is Ownable {
         setFundRoundTimes();
     }
 
-    /**
-     * @notice Get end time that users can fund.
-     * @return _endTime timestamp of the end time.
-     */
-    function getEndTime() external view returns (uint256) {
-        return _idoProperty.endTime;
-    }
+    // /**
+    //  * @notice Get end time that users can fund.
+    //  * @return _endTime timestamp of the end time.
+    //  */
+    // function getEndTime() external view returns (uint256) {
+    //     return _idoProperty.endTime;
+    // }
 
     /**
      * @notice Get time that tiers can fund.
@@ -216,21 +244,6 @@ contract IDO is Ownable {
      */
     function setMaxAmountPerUser(uint256 maxAmountPerUser) external onlyOperator onlyBefore(_idoProperty.startTime) {
         _idoProperty.maxAmountPerUser = maxAmountPerUser;
-    }
-
-    /**
-     * @notice Operator sets the info of sale
-     * @param fundAmount: Amount of fund token
-     * @param saleAmount: Amount of sale token
-     */
-    function setSaleInfo(uint256 fundAmount, uint256 saleAmount)
-        external
-        onlyOperator
-        onlyBefore(_idoProperty.startTime)
-    {
-        require(fundAmount > 0 && saleAmount > 0, "IDO: token amount must be greater than zero.");
-        _idoProperty.fundAmount = fundAmount;
-        _idoProperty.saleAmount = saleAmount;
     }
 
     /**

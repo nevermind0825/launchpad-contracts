@@ -22,6 +22,7 @@ describe("IDO test", async () => {
   let user1: SignerWithAddress;
   let user2: SignerWithAddress;
   let momentNow: moment.Moment;
+  let idoProperty: IDO.IDOPropertyStruct;
 
   beforeEach(async () => {
     [, operator, recipient, projectOwner, finalizer, user0, user1, user2] = await ethers.getSigners();
@@ -30,25 +31,40 @@ describe("IDO test", async () => {
 
     // Create IDO
     await seg.transfer(projectOwner.address, 5000);
-    await idoFactory.connect(operator).createIDO(busd.address, 1000, seg.address, 5000);
+    momentNow = moment.unix(await getLatestBlockTimestamp()); // 2022-09-01
+    idoProperty = {
+      fundToken: busd.address,
+      saleToken: seg.address,
+      fundAmount: 1000,
+      saleAmount: 5000,
+      startTime: momentNow.add(10, "days").unix(),
+      endTime: momentNow.add(9, "days").unix(),
+      claimTime: momentNow.add(2, "days").unix(),
+      tge: 20,
+      cliffTime: momentNow.add(3, "days").unix(),
+      duration: moment.duration(2, "weeks").asSeconds(),
+      periodicity: moment.duration(1, "weeks").asSeconds(),
+      baseAmount: 100,
+      maxAmountPerUser: 50,
+    };
+    await idoFactory.connect(operator).createIDO(idoProperty);
     const idoAddr = await idoFactory.getIDO(0);
     const idoContractFactory: IDO__factory = await ethers.getContractFactory("IDO");
     ido = <IDO>idoContractFactory.attach(idoAddr);
 
     // Init IDO property
-    momentNow = moment.unix(await getLatestBlockTimestamp()); // 2022-09-01
-    await ido.setStartTime(momentNow.add(10, "days").unix()); // 2022-09-11
-    await ido.connect(operator).setEndTime(momentNow.add(9, "days").unix()); // 2022-09-20
-    await ido.connect(operator).setClaimTime(momentNow.add(2, "days").unix()); // 2022-09-22
-    await ido.connect(operator).setVestInfo(
-      20,
-      momentNow.add(3, "days").unix(), // 2022-09-25
-      moment.duration(2, "weeks").asSeconds(),
-      moment.duration(1, "weeks").asSeconds(),
-    );
-    await ido.connect(operator).setBaseAmount(100);
-    await ido.connect(operator).setMaxAmountPerUser(50);
-    await ido.connect(operator).setSaleInfo(1000, 5000);
+    // await ido.connect(operator).setSaleInfo(busd.address, 1000, seg.address, 5000);
+    // await ido.setStartTime(momentNow.add(10, "days").unix()); // 2022-09-11
+    // await ido.connect(operator).setEndTime(momentNow.add(9, "days").unix()); // 2022-09-20
+    // await ido.connect(operator).setClaimTime(momentNow.add(2, "days").unix()); // 2022-09-22
+    // await ido.connect(operator).setVestInfo(
+    //   20,
+    //   momentNow.add(3, "days").unix(), // 2022-09-25
+    //   moment.duration(2, "weeks").asSeconds(),
+    //   moment.duration(1, "weeks").asSeconds(),
+    // );
+    // await ido.connect(operator).setBaseAmount(100);
+    // await ido.connect(operator).setMaxAmountPerUser(50);
     await ido.connect(operator).setWhitelistAmount(user0.address, 0);
     await ido.connect(operator).setWhitelistAmounts([user1.address, user2.address], [200, 500]);
 
@@ -61,11 +77,12 @@ describe("IDO test", async () => {
 
   describe("Set IDO property", () => {
     it("Check to create IDO", async () => {
-      await expect(
-        idoFactory.createIDO(ethers.constants.AddressZero, 1000, ethers.constants.AddressZero, 5000),
-      ).to.be.revertedWith("IDO: token address is invalid");
-      await expect(idoFactory.createIDO(busd.address, 0, seg.address, 0)).to.be.revertedWith(
-        "IDO: token amount is greater than zero",
+      idoProperty.fundToken = ethers.constants.AddressZero;
+      await expect(idoFactory.createIDO(idoProperty)).to.be.revertedWith("IDO: token address is invalid");
+      idoProperty.fundToken = busd.address;
+      idoProperty.fundAmount = 0;
+      await expect(idoFactory.createIDO(idoProperty)).to.be.revertedWith(
+        "IDO: token amount is zero",
       );
     });
 
@@ -84,7 +101,9 @@ describe("IDO test", async () => {
       ).to.be.revertedWith("IDO: caller is not operator");
       await expect(ido.connect(user0).setBaseAmount(100)).to.be.revertedWith("IDO: caller is not operator");
       await expect(ido.connect(user0).setMaxAmountPerUser(100)).to.be.revertedWith("IDO: caller is not operator");
-      await expect(ido.connect(user0).setSaleInfo(1000, 5000)).to.be.revertedWith("IDO: caller is not operator");
+      await expect(ido.connect(user0).setSaleInfo(busd.address, 1000, seg.address, 5000)).to.be.revertedWith(
+        "IDO: caller is not operator",
+      );
       await expect(ido.connect(user0).setWhitelistAmount(user0.address, 0)).to.be.revertedWith(
         "IDO: caller is not operator",
       );
@@ -118,8 +137,8 @@ describe("IDO test", async () => {
           moment.duration(2, "weeks").asSeconds(),
         ),
       ).to.be.revertedWith("IDO: duration must be a multiple of periodicity");
-      await expect(ido.connect(operator).setSaleInfo(0, 0)).to.be.revertedWith(
-        "IDO: token amount must be greater than zero.",
+      await expect(ido.connect(operator).setSaleInfo(busd.address, 0, seg.address, 0)).to.be.revertedWith(
+        "IDO: token amount is zero",
       );
       await expect(ido.connect(operator).setWhitelistAmounts([user1.address, user2.address], [500])).to.be.revertedWith(
         "IDO: invalid whitelisted users' info",
@@ -137,7 +156,6 @@ describe("IDO test", async () => {
       let endTime = momentNow.add(9, "days").unix();
       let tierFundTime = (endTime - startTime) / 3 + startTime;
       let whitelistedFundTime = ((endTime - startTime) * 2) / 3 + startTime;
-      expect(await ido.getEndTime()).to.equal(endTime);
       expect(await ido.getTierFundTime()).to.equal(tierFundTime);
       expect(await ido.getWhitelistedFundTime()).to.equal(whitelistedFundTime);
 
@@ -182,7 +200,7 @@ describe("IDO test", async () => {
       await expect(ido.setStartTime(momentNow.unix())).to.be.revertedWith("IDO: time is out");
       await expect(ido.setBaseAmount(100)).to.be.revertedWith("IDO: time is out");
       await expect(ido.setMaxAmountPerUser(100)).to.be.revertedWith("IDO: time is out");
-      await expect(ido.setSaleInfo(1000, 5000)).to.be.revertedWith("IDO: time is out");
+      await expect(ido.setSaleInfo(busd.address, 1000, seg.address, 5000)).to.be.revertedWith("IDO: time is out");
       await expect(ido.setWhitelistAmount(user0.address, 0)).to.be.revertedWith("IDO: time is out");
       await expect(ido.setWhitelistAmounts([user1.address, user2.address], [500, 300])).to.be.revertedWith(
         "IDO: time is out",
@@ -215,9 +233,9 @@ describe("IDO test", async () => {
     let whitelistedFundTime: BigNumber;
 
     beforeEach(async () => {
-      timeTravel(moment.duration(10, "days").asSeconds());
+      timeTravel(moment.duration(11, "days").asSeconds());
       contractNow = await getLatestBlockTimestamp();
-      endTime = await ido.getEndTime();
+      endTime = (await ido.getIDOProperty()).endTime;
       tierFundTime = await ido.getTierFundTime();
       whitelistedFundTime = await ido.getWhitelistedFundTime();
     });

@@ -89,6 +89,13 @@ contract IDOFactory is Ownable {
     }
 
     /**
+     * @notice Get IDO addresses
+     */
+    function getIDOs() external view returns (address[] memory) {
+        return _ctrtIDOs;
+    }
+
+    /**
      * @notice Get user's multiplier
      * @param funder: Address of funder
      * @return multiplier

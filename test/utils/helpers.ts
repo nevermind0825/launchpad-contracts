@@ -15,3 +15,8 @@ export const getLatestBlockTimestamp = async (): Promise<number> => {
   const latestBlock = await ethers.provider.getBlock("latest");
   return latestBlock.timestamp;
 };
+
+export const unlockAccount = async (address: string) => {
+  await hre.network.provider.send("hardhat_impersonateAccount", [address]);
+  return address;
+};

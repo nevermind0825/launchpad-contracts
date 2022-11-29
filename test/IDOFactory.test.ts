@@ -3,7 +3,7 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
 
 import { initIDOFactory } from "./utils/IDO.behavior";
-import { IDOFactory, Tier, Point, BUSD, SEG } from "../typechain";
+import { IDOFactory, Tier, Point, BUSD, SEG, IDO } from "../typechain";
 
 describe("IDOFactory test", () => {
   let idoFactory: IDOFactory;
@@ -55,18 +55,28 @@ describe("IDOFactory test", () => {
 
   describe("Create IDO", async () => {
     it("Caller must be operator", async () => {
-      await expect(idoFactory.connect(user0).createIDO(busd.address, 0, seg.address, 0)).to.be.revertedWith(
+      const idoProperty: IDO.IDOPropertyStruct = {
+        fundToken: busd.address,
+        saleToken: seg.address,
+        fundAmount: 0,
+        saleAmount: 0,
+        startTime: 0,
+        endTime: 0,
+        claimTime: 0,
+        tge: 0,
+        cliffTime: 0,
+        duration: 0,
+        periodicity: 0,
+        baseAmount: 0,
+        maxAmountPerUser: 0,
+      };
+      await expect(idoFactory.connect(user0).createIDO(idoProperty)).to.be.revertedWith(
         "IDOFactory: caller is not operator",
       );
     });
 
-    it("Check create IDO", async () => {
-      await expect(idoFactory.connect(operator).createIDO(busd.address, 1000, seg.address, 5000)).to.emit(
-        idoFactory,
-        "CreateIDO",
-      );
+    it("Check the index of IDO", async () => {
       await expect(idoFactory.getIDO(1)).to.be.revertedWith("IDOFactory: IDO index is invalid");
-      await idoFactory.getIDO(0);
     });
   });
 
