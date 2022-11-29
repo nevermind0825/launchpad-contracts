@@ -17,8 +17,8 @@ contract Tier is Ownable {
         uint256 multiplier;
     }
 
-    TierList[] private _tiers;
-    mapping(string => bool) private isTierAdded;
+    TierList[] public _tiers;
+    mapping(string => bool) public isTierAdded;
 
     /**
      * @notice By default, 4 tiers are added.
@@ -105,11 +105,10 @@ contract Tier is Ownable {
 
     /**
      * @notice Get a tier
-     * @param index: Index of tier to get
-     * @return tierInfo: Return the tier info (name, minimum point, multiplier)
+     * @return tierInfos: Return the tiers info (name, minimum point, multiplier)[]
      */
-    function getTier(uint256 index) external view onlyIndex(index) returns (TierList memory) {
-        return _tiers[index];
+    function getTiers() external view returns (TierList[] memory) {
+        return _tiers;
     }
 
     /**

@@ -40,7 +40,7 @@ describe("Tier test", () => {
     });
 
     it("Check inserted tier", async () => {
-      const tierInfo = await tier.getTier(1);
+      const tierInfo = await tier._tiers(1);
       expect(tierInfo[0]).to.equal("Star");
       expect(tierInfo[1]).to.equal(500);
       expect(tierInfo[2]).to.equal(5);
@@ -69,7 +69,7 @@ describe("Tier test", () => {
 
     it("Check updated tier info", async () => {
       await tier.updateTier(2, "Test", 200, 2);
-      const updatedTierInfo = await tier.getTier(2);
+      const updatedTierInfo = await tier._tiers(2);
       expect(updatedTierInfo[0]).to.equal("Test");
       expect(updatedTierInfo[1]).to.equal(200);
       expect(updatedTierInfo[2]).to.equal(2);
@@ -88,7 +88,7 @@ describe("Tier test", () => {
     it("Check remove tier", async () => {
       await tier.removeTier(2);
       await tier.removeTier(2);
-      await expect(tier.getTier(3)).to.be.revertedWith("Tier: invalid index");
+      await expect(tier._tiers(3)).to.be.reverted;
     });
   });
 

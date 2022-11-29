@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/interfaces/IERC20.sol";
-// import "hardhat/console.sol";
+import "hardhat/console.sol";
 
 import "./IDO.sol";
 import "./interfaces/ITier.sol";
@@ -13,12 +13,12 @@ import "./interfaces/ITier.sol";
  * @notice IDOFactoy creates IDOs.
  */
 contract IDOFactory is Ownable {
-    address[] private _ctrtIDOs;
+    address[] public _ctrtIDOs;
 
-    address private _tier;
-    address private _point;
+    address public _tier;
+    address public _point;
 
-    mapping(address => bool) private operators;
+    mapping(address => bool) public operators;
 
     event CreateIDO(address indexed idoAddress, uint256 index);
     event SetOperator(address indexed operator, bool canOperate);
@@ -48,16 +48,8 @@ contract IDOFactory is Ownable {
         _tier = tier;
     }
 
-    function getTierAddress() external view returns (address) {
-        return _tier;
-    }
-
     function setPointAddress(address point) external onlyOwner {
         _point = point;
-    }
-
-    function getPointAddress() external view returns (address) {
-        return _point;
     }
 
     /**
@@ -73,23 +65,15 @@ contract IDOFactory is Ownable {
     /**
      * @notice IDOFactory owner creates a new IDO
      */
-    function createIDO(IDO.IDOProperty memory idoProperty) external onlyOperator {
-        _ctrtIDOs.push(address(new IDO(idoProperty)));
+    function createIDO(IDO.IDOMeta memory idoMeta) external onlyOperator {
+        _ctrtIDOs.push(address(new IDO(idoMeta)));
         uint256 index = _ctrtIDOs.length - 1;
         emit CreateIDO(_ctrtIDOs[index], index);
     }
 
     /**
-     * @notice Get IDO address
-     * @param index: Index of the IDO to get
-     * @return IDO: Address of the IDO to get
-     */
-    function getIDO(uint256 index) external view inIDOs(index) returns (address) {
-        return _ctrtIDOs[index];
-    }
-
-    /**
      * @notice Get IDO addresses
+     * @return IDOs: Addresses of the IDOs
      */
     function getIDOs() external view returns (address[] memory) {
         return _ctrtIDOs;
@@ -102,14 +86,5 @@ contract IDOFactory is Ownable {
      */
     function getMultiplier(address funder) public view returns (uint256 multiplier) {
         (, multiplier) = ITier(_tier).getMultiplier(_point, funder);
-    }
-
-    /**
-     * @notice Check if user is an operator
-     * @param addr: Address of user's account
-     * @return isOperator: Return true if user is an operator, false otherwise
-     */
-    function isOperator(address addr) public view returns (bool) {
-        return operators[addr];
     }
 }

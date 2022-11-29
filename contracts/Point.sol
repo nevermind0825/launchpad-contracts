@@ -16,8 +16,8 @@ contract Point is Ownable {
         uint256 weight;
     }
 
-    TokenInfo[] private _tokenInfos;
-    mapping(address => bool) private isTokenAdded;
+    TokenInfo[] public _tokenInfos;
+    mapping(address => bool) public isTokenAdded;
 
     modifier onlyIndex(uint256 indexTokenInfo) {
         require(indexTokenInfo < _tokenInfos.length, "Point: token index is invalid");
@@ -68,11 +68,10 @@ contract Point is Ownable {
 
     /**
      * @notice Get a token
-     * @param index: Index of a token to get
-     * @return tokenInfo: Return the token info (token address, token weight)
+     * @return tokenInfos: Return the tokens info (token address, token weight)[]
      */
-    function getToken(uint256 index) external view onlyIndex(index) returns (TokenInfo memory) {
-        return _tokenInfos[index];
+    function getTokens() external view returns (TokenInfo[] memory) {
+        return _tokenInfos;
     }
 
     /**

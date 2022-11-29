@@ -22,7 +22,7 @@ describe("IDO test", async () => {
   let user1: SignerWithAddress;
   let user2: SignerWithAddress;
   let momentNow: moment.Moment;
-  let idoProperty: IDO.IDOPropertyStruct;
+  let idoMeta: IDO.IDOMetaStruct;
 
   beforeEach(async () => {
     [, operator, recipient, projectOwner, finalizer, user0, user1, user2] = await ethers.getSigners();
@@ -32,7 +32,7 @@ describe("IDO test", async () => {
     // Create IDO
     await seg.transfer(projectOwner.address, 5000);
     momentNow = moment.unix(await getLatestBlockTimestamp()); // 2022-09-01
-    idoProperty = {
+    idoMeta = {
       fundToken: busd.address,
       saleToken: seg.address,
       fundAmount: 1000,
@@ -47,12 +47,12 @@ describe("IDO test", async () => {
       baseAmount: 100,
       maxAmountPerUser: 50,
     };
-    await idoFactory.connect(operator).createIDO(idoProperty);
-    const idoAddr = await idoFactory.getIDO(0);
+    await idoFactory.connect(operator).createIDO(idoMeta);
+    const idoAddr = await idoFactory._ctrtIDOs(0);
     const idoContractFactory: IDO__factory = await ethers.getContractFactory("IDO");
     ido = <IDO>idoContractFactory.attach(idoAddr);
 
-    // Init IDO property
+    // Init IDO meta
     // await ido.connect(operator).setSaleInfo(busd.address, 1000, seg.address, 5000);
     // await ido.setStartTime(momentNow.add(10, "days").unix()); // 2022-09-11
     // await ido.connect(operator).setEndTime(momentNow.add(9, "days").unix()); // 2022-09-20
@@ -75,18 +75,18 @@ describe("IDO test", async () => {
     await seg.connect(projectOwner).approve(ido.address, 5000);
   });
 
-  describe("Set IDO property", () => {
+  describe("Set IDO meta", () => {
     it("Check to create IDO", async () => {
-      idoProperty.fundToken = ethers.constants.AddressZero;
-      await expect(idoFactory.createIDO(idoProperty)).to.be.revertedWith("IDO: token address is invalid");
-      idoProperty.fundToken = busd.address;
-      idoProperty.fundAmount = 0;
-      await expect(idoFactory.createIDO(idoProperty)).to.be.revertedWith(
+      idoMeta.fundToken = ethers.constants.AddressZero;
+      await expect(idoFactory.createIDO(idoMeta)).to.be.revertedWith("IDO: token address is invalid");
+      idoMeta.fundToken = busd.address;
+      idoMeta.fundAmount = 0;
+      await expect(idoFactory.createIDO(idoMeta)).to.be.revertedWith(
         "IDO: token amount is zero",
       );
     });
 
-    it("Check operator to set property", async () => {
+    it("Check operator to set meta", async () => {
       const now: number = moment().unix();
       await expect(ido.connect(user0).setStartTime(now)).to.be.revertedWith("IDO: caller is not operator");
       await expect(ido.connect(user0).setEndTime(now)).to.be.revertedWith("IDO: caller is not operator");
@@ -112,7 +112,7 @@ describe("IDO test", async () => {
       ).to.be.revertedWith("IDO: caller is not operator");
     });
 
-    it("Check validation to set property", async () => {
+    it("Check validation to set meta", async () => {
       await expect(
         ido.connect(operator).setVestInfo(
           120,
@@ -150,28 +150,28 @@ describe("IDO test", async () => {
     });
   });
 
-  describe("Check time when set and update property", () => {
+  describe("Check time when set and update meta", () => {
     it("Check fund round time", async () => {
       let startTime = momentNow.subtract(14, "days").unix();
       let endTime = momentNow.add(9, "days").unix();
       let tierFundTime = (endTime - startTime) / 3 + startTime;
       let whitelistedFundTime = ((endTime - startTime) * 2) / 3 + startTime;
-      expect(await ido.getTierFundTime()).to.equal(tierFundTime);
-      expect(await ido.getWhitelistedFundTime()).to.equal(whitelistedFundTime);
+      expect(await ido._tierFundTime()).to.equal(tierFundTime);
+      expect(await ido._whitelistedFundTime()).to.equal(whitelistedFundTime);
 
       endTime = momentNow.add(1, "days").unix();
       tierFundTime = (endTime - startTime) / 3 + startTime;
       whitelistedFundTime = ((endTime - startTime) * 2) / 3 + startTime;
       await ido.setEndTime(endTime);
-      expect(await ido.getTierFundTime()).to.equal(tierFundTime);
-      expect(await ido.getWhitelistedFundTime()).to.equal(whitelistedFundTime);
+      expect(await ido._tierFundTime()).to.equal(tierFundTime);
+      expect(await ido._whitelistedFundTime()).to.equal(whitelistedFundTime);
 
       startTime = momentNow.subtract(8, "days").unix();
       tierFundTime = (endTime - startTime) / 3 + startTime;
       whitelistedFundTime = ((endTime - startTime) * 2) / 3 + startTime;
       await ido.setStartTime(startTime);
-      expect(await ido.getTierFundTime()).to.equal(tierFundTime);
-      expect(await ido.getWhitelistedFundTime()).to.equal(whitelistedFundTime);
+      expect(await ido._tierFundTime()).to.equal(tierFundTime);
+      expect(await ido._whitelistedFundTime()).to.equal(whitelistedFundTime);
     });
 
     it("The setting time must be greater than related time", async () => {
@@ -235,9 +235,9 @@ describe("IDO test", async () => {
     beforeEach(async () => {
       timeTravel(moment.duration(11, "days").asSeconds());
       contractNow = await getLatestBlockTimestamp();
-      endTime = (await ido.getIDOProperty()).endTime;
-      tierFundTime = await ido.getTierFundTime();
-      whitelistedFundTime = await ido.getWhitelistedFundTime();
+      endTime = (await ido._metaInfo()).endTime;
+      tierFundTime = await ido._tierFundTime();
+      whitelistedFundTime = await ido._whitelistedFundTime();
     });
 
     describe("Check to fund", () => {
@@ -280,7 +280,7 @@ describe("IDO test", async () => {
 
       it("Fund when emergency refund", async () => {
         await ido.emergencyRefund();
-        expect(await ido.getState()).to.be.equal(State.FAILURE);
+        expect(await ido._state()).to.be.equal(State.FAILURE);
         expect(await busd.balanceOf(ido.address)).to.equal(0);
         await expect(ido.connect(user2).fund(10)).to.be.revertedWith("IDO: funder can't fund");
       });
@@ -303,7 +303,7 @@ describe("IDO test", async () => {
         await expect(ido.connect(user1).fund(100)).to.emit(ido, "Fund").withArgs(UserRole.Tier, user1.address, 100);
         await expect(ido.connect(user1).claim()).to.be.revertedWith("IDO: claim time is not yet");
         timeTravel(moment.duration(15, "days").asSeconds());
-        expect(await ido.getState()).to.equal(State.WAITING);
+        expect(await ido._state()).to.equal(State.WAITING);
         await expect(ido.connect(user1).claim()).to.be.revertedWith("IDO: state is not success");
       });
     });
@@ -373,7 +373,7 @@ describe("IDO test", async () => {
       it("Check IDO state", async () => {
         expect(await busd.balanceOf(ido.address)).to.equal(500);
         // 100 + 400 = 500 < 1000 * 0.51 = 510 => failure
-        expect(await ido.getState()).to.equal(State.FAILURE);
+        expect(await ido._state()).to.equal(State.FAILURE);
       });
 
       it("Funders can't claim", async () => {
@@ -412,7 +412,7 @@ describe("IDO test", async () => {
 
       it("Check IDO state", async () => {
         /* 100 + 400 + 100 + 300 + 50 + 50 = 1000 => IDO is SUCCESS! */
-        expect(await ido.getState()).to.equal(State.SUCCESS);
+        expect(await ido._state()).to.equal(State.SUCCESS);
         expect(await busd.balanceOf(ido.address)).to.equal(0);
         expect(await seg.balanceOf(ido.address)).to.equal(5000);
       });
@@ -497,7 +497,7 @@ describe("IDO test", async () => {
 
       it("Funders can't refund the fund token", async () => {
         await expect(ido.connect(user0).refund()).to.be.revertedWith("IDO: state is not failure");
-        expect(await ido.getState()).to.equal(State.SUCCESS);
+        expect(await ido._state()).to.equal(State.SUCCESS);
       });
     });
   });

@@ -41,10 +41,10 @@ describe("point test", () => {
     });
 
     it("Check inseted token", async () => {
-      let tokenInfo = await point.getToken(0);
+      let tokenInfo = await point._tokenInfos(0);
       expect(tokenInfo[0]).to.be.equal(play.address);
       expect(tokenInfo[1]).to.be.equal(PLAY_WEIGHT);
-      tokenInfo = await point.getToken(1);
+      tokenInfo = await point._tokenInfos(1);
       expect(tokenInfo[0]).to.be.equal(playBUSD.address);
       expect(tokenInfo[1]).to.be.equal(PLAYBUSD_WEIGHT);
     });
@@ -67,7 +67,7 @@ describe("point test", () => {
 
     it("Check updated token infos", async () => {
       await point.updateToken(1, user0.address, 3);
-      const updatedToken = await point.getToken(1);
+      const updatedToken = await point._tokenInfos(1);
       expect(updatedToken[0]).to.be.equal(user0.address);
       expect(updatedToken[1]).to.be.equal(3);
     });
@@ -85,7 +85,7 @@ describe("point test", () => {
     it("Check remove token", async () => {
       await point.removeToken(0);
       await point.removeToken(0);
-      await expect(point.getToken(1)).to.be.revertedWith("Point: token index is invalid");
+      await expect(point._tokenInfos(1)).to.be.reverted;
     });
   });
 

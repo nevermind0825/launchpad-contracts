@@ -33,8 +33,8 @@ describe("IDOFactory test", () => {
     it("Check tier and point address", async () => {
       idoFactory.setTierAddress(tier.address);
       idoFactory.setPointAddress(point.address);
-      expect(await idoFactory.getTierAddress()).to.equal(tier.address);
-      expect(await idoFactory.getPointAddress()).to.equal(point.address);
+      expect(await idoFactory._tier()).to.equal(tier.address);
+      expect(await idoFactory._point()).to.equal(point.address);
     });
   });
 
@@ -49,13 +49,13 @@ describe("IDOFactory test", () => {
       await expect(idoFactory.setOperator(operator.address, false))
         .to.emit(idoFactory, "SetOperator")
         .withArgs(operator.address, false);
-      expect(await idoFactory.isOperator(operator.address)).to.eq(false);
+      expect(await idoFactory.operators(operator.address)).to.eq(false);
     });
   });
 
   describe("Create IDO", async () => {
     it("Caller must be operator", async () => {
-      const idoProperty: IDO.IDOPropertyStruct = {
+      const idoProperty: IDO.IDOMetaStruct = {
         fundToken: busd.address,
         saleToken: seg.address,
         fundAmount: 0,
@@ -76,7 +76,7 @@ describe("IDOFactory test", () => {
     });
 
     it("Check the index of IDO", async () => {
-      await expect(idoFactory.getIDO(1)).to.be.revertedWith("IDOFactory: IDO index is invalid");
+      await expect(idoFactory._ctrtIDOs(1)).to.be.reverted;
     });
   });
 
