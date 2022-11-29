@@ -31,6 +31,12 @@ contract IDO is Ownable {
     uint256 public constant FINALIZE_PERCENT = 51;
 
     struct IDOMeta {
+        string title;
+        string website;
+        string logo;
+        string description;
+        string fundSymbol;
+        string saleSymbol;
         address fundToken;
         address saleToken;
         uint256 fundAmount;
